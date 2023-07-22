@@ -1,3 +1,3 @@
-# companion-module-[replace with module name]
+# companion-module-zerodensity-realityhub
 
 See [HELP.md](./companion/HELP.md) and [LICENSE](./LICENSE)
