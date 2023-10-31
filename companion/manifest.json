@@ -1,26 +1,31 @@
 {
-	"id": "your-module-name",
-	"name": "your-module-name",
-	"shortname": "module-shortname",
-	"description": "A short one line description of your module",
-	"version": "0.0.0",
+	"id": "zerodensity-realityhub",
+	"name": "zerodensity-realityhub",
+	"shortname": "RealityHub",
+	"description": "zerodensity-realityhub",
+	"version": "1.0.0",
 	"license": "MIT",
-	"repository": "git+https://github.com/bitfocus/companion-module-your-module-name.git",
-	"bugs": "https://github.com/bitfocus/companion-module-your-module-name/issues",
+	"repository": "https://github.com/bitfocus/companion-module-zerodensity-realityhub",
+	"bugs": "https://github.com/bitfocus/companion-module-zerodensity-realityhub/issues",
 	"maintainers": [
 		{
-			"name": "Your name",
-			"email": "Your email"
+			"name": "Jan Görgen",
+			"email": "jg@goergen-medien.de"
 		}
 	],
+	"legacyIds": [],
 	"runtime": {
 		"type": "node18",
 		"api": "nodejs-ipc",
 		"apiVersion": "0.0.0",
-		"entrypoint": "../main.js"
+		"entrypoint": "../index.js"
 	},
-	"legacyIds": [],
-	"manufacturer": "Your company",
-	"products": ["Your product"],
-	"keywords": []
+	"manufacturer": "Zerodensity",
+	"products": [
+		"RealityHub 1.3"
+	],
+	"keywords": [
+		"Zerodensity",
+		"RealityHub"
+	]
 }
