@@ -1,20 +1,24 @@
 {
-	"name": "your-module-name",
-	"version": "0.1.0",
-	"main": "main.js",
+	"name": "zerodensity-realityhub",
+	"version": "1.0.0",
+	"main": "index.js",
+	"type": "module",
 	"scripts": {
-		"format": "prettier -w ."
+		"test": "echo \"Error: no test specified\" && exit 1"
 	},
-	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/bitfocus/companion-module-your-module-name.git"
+		"url": "https://github.com/bitfocus/companion-module-zerodensity-realityhub"
 	},
+	"license": "MIT",
 	"dependencies": {
-		"@companion-module/base": "~1.4.0"
+		"@companion-module/base": "~1.4.1",
+		"got": "^12.6.0",
+		"lodash": "^4.17.21",
+		"npm": "^9.8.1",
+		"secure-json-logic": "^0.9.11"
 	},
 	"devDependencies": {
 		"@companion-module/tools": "^1.2.0"
-	},
-	"prettier": "@companion-module/tools/.prettierrc.json"
+	}
 }
