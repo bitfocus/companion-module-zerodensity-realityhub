@@ -152,19 +152,19 @@ function createActions(inst) {
                 switch(event.options.data) {
                     case 'updateEnginesData':
                         if (inst.data.module.updateEnginesData === true) break
-                        pollEngines()
+                        inst.pollEngines()
                         break
                     case 'updateNodesData':
                         if (inst.data.module.updateNodesData === true) break
-                        pollNodes()
+                        inst.pollNodes()
                         break
                     case 'updateRundownsData':
                         if (inst.data.module.updateRundownsData === true) break
-                        pollRundowns()
+                        inst.pollRundowns()
                         break
                     case 'updateTemplatesData':
                         if (inst.data.module.updateTemplatesData === true) break
-                        pollTemplates()
+                        inst.pollTemplates()
                         break
                 }
             }
