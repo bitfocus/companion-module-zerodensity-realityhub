@@ -4,7 +4,8 @@ import { combineRgb } from '@companion-module/base'
 import { nodePropertiesOptions } from './features/nodes.js'
 import { rundownButtonOptions } from './features/rundowns.js'
 import { templateButtonOptions } from './features/templates.js'
-import { contains, sString, engineSelection, basicFeedback, featureInactive } from './tools.js'
+import { contains, sString, basicFeedback, featureInactive } from './tools.js'
+import { engineSelection } from './engines.js'
 
 
 

@@ -14,9 +14,7 @@
 	"dependencies": {
 		"@companion-module/base": "~1.4.1",
 		"got": "^12.6.0",
-		"lodash": "^4.17.21",
-		"npm": "^9.8.1",
-		"secure-json-logic": "^0.9.11"
+		"npm": "^9.8.1"
 	},
 	"devDependencies": {
 		"@companion-module/tools": "^1.2.0"

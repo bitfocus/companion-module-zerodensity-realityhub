@@ -20,18 +20,6 @@ export const sDecode = (string) => {
     return Buffer.from(string.replaceAll('_p', '+').replaceAll('_s', '/').replaceAll('_e', '='), 'base64').toString('utf8')
 }
 
-function sPath(object, path) {
-    path = path.replace(/\[(\w+)\]/g, '.$1') // convert indexes to properties
-    path = path.replace(/^\./, '') // strip a leading dot
-    const pSteps = path.split('.') // split path to steps
-    for (let i = 0, n = pSteps.length; i < n; ++i) {
-        const step = pSteps[i]
-        if (step in object) object = object[step]
-        else return
-    }
-    return object;
-}
-
 export const ms2S = (ms) => {
     if (ms < 10000) return Math.ceil(ms/100)/10
     else return Math.ceil(ms/1000)
@@ -62,16 +50,6 @@ export const sString = (input) => { return encodeURIComponent(input) }
 
 export const contains = (list, item) => (Array.isArray(list) && list.includes(item))
 
-export const eMatch = (items, path) => {
-    try {
-        const ref = items[0]
-        for (const item of items) {
-            if (sPath(item, path) !== sPath(ref, path)) return false
-        }
-    }
-    catch { return false }
-    return true
-}
 
 export const simple = (a, b, invert=false) => {
     if (a == b) {
@@ -112,24 +90,6 @@ export const aNodes = (nodes) => {
         num += Object.keys(eNodes).length
     }
     return num
-}
-
-export const engineSelection = (inst) => {
-    const defaultEngines = []
-    const engineChoices = []
-    for (const [id, engine] of Object.entries(inst.data.engines)) {
-        defaultEngines.push(id)
-        engineChoices.push({ id: id, label: engine.displayName })
-    }
-
-    return {
-        type: 'multidropdown',
-        id: 'engines',
-        label: 'Select Engines:',
-        default: defaultEngines,
-        choices: engineChoices,
-        tooltip: 'Select target engines for this action or feedback'
-    }
 }
 
 export const featureInactive = (feature, name, description) => {
@@ -220,6 +180,38 @@ export const variablePath = (inst, name) => {
 
 export const autoUpdateEnabled = (feature, inst) => {
     return inst.config[feature + inst.config.features.findIndex((element) => element === feature)]
+}
+
+export const isEqual = (element1, element2) => {
+
+    if (element1 === element2) return true
+
+    if (typeof element1 !== typeof element2) return false
+
+    if (element1 instanceof Object && element2 instanceof Object) {
+        const keysElement1 = Object.keys(element1)
+        const keysElement2 = Object.keys(element2)
+
+        if (keysElement1.length !== keysElement2.length) return false
+
+        for (const key of keysElement1) {
+            if (!isEqual(element1[key], element2[key])) return false
+        }
+    }
+    else if (element1 instanceof Array && element2 instanceof Array) {
+
+        if (element1.length !== element2.length) return false
+
+        for (const i=0; i<element1.length; i++) {
+            if (!isEqual(element1[i], element2[i])) return false
+        }
+    }
+    else if (element1 instanceof Date && element2 instanceof Date) {
+        if (element1.getTime() === element2.getTime()) return true
+    }
+    else return false
+
+    return true
 }
 
 export class defaultTimer { // creates new timer object

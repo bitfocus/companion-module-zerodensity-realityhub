@@ -1,10 +1,9 @@
 //templates
 
-import _ from 'lodash'
 import { getActions } from '../actions.js'
 import { getFeedbacks } from '../feedbacks.js'
 import { getPresets } from '../presets.js'
-import { keyValueLogic, ms2S } from '../tools.js'
+import { keyValueLogic, ms2S, isEqual } from '../tools.js'
 
 
 
@@ -253,7 +252,7 @@ export const loadTemplates = async (inst) => {
     else { templates = {} }
 
     // only update templates if requested data is diffrent from previous template data
-    if (!_.isEqual(inst.data.templates, templates)) {
+    if (!isEqual(inst.data.templates, templates)) {
         inst.data.templates = templates
         inst.setActionDefinitions(getActions(inst))
         inst.setFeedbackDefinitions(getFeedbacks(inst))

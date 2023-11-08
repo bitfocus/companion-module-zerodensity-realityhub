@@ -3,7 +3,7 @@
 import _ from 'lodash'
 import { getActions } from '../actions.js'
 import { getFeedbacks } from '../feedbacks.js'
-import { keyValueLogic, ms2S } from '../tools.js'
+import { keyValueLogic, ms2S, isEqual } from '../tools.js'
 
 
 
@@ -144,7 +144,7 @@ export const loadRundowns = async (inst) => {
     else { rundowns = {} }
 
     // only update rundowns if requested data is diffrent from previous rundown data
-    if (!_.isEqual(inst.data.rundowns, rundowns)) {
+    if (!isEqual(inst.data.rundowns, rundowns)) {
         inst.data.rundowns = rundowns
         inst.setActionDefinitions(getActions(inst))
         inst.setFeedbackDefinitions(getFeedbacks(inst))

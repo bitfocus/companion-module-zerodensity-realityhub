@@ -1,9 +1,9 @@
 // nodes
 
-import _ from 'lodash'
 import { getActions } from '../actions.js'
 import { getFeedbacks } from '../feedbacks.js'
-import { keyValueLogic, ms2S, sString, engineSelection } from '../tools.js'
+import { keyValueLogic, ms2S, sString, isEqual } from '../tools.js'
+import { engineSelection } from './engines.js'
 
 
 // create input fields for node properties
@@ -156,7 +156,7 @@ export const loadNodes = async (inst) => {
     }
 
     // checks for a change, if request shows same data, don't update
-    if (!_.isEqual(inst.data.nodes, nodes)) {
+    if (!isEqual(inst.data.nodes, nodes)) {
         inst.data.nodes = nodes
         inst.setActionDefinitions(getActions(inst))
         inst.setFeedbackDefinitions(getFeedbacks(inst))

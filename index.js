@@ -2,8 +2,7 @@
 
 import { InstanceBase, runEntrypoint } from '@companion-module/base'
 import got from 'got'
-import _ from 'lodash'
-import { upgradeScripts } from './upgrade.js'
+import { upgradeScripts } from './upgrades.js'
 import { createConfigFields } from './configFields.js'
 import { getActions } from './actions.js'
 import { getFeedbacks } from './feedbacks.js'

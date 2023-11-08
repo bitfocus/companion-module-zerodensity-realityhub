@@ -1,10 +1,27 @@
 // engines
 
-import _ from 'lodash'
 import { getVariables } from '../variables.js'
-import { ms2S } from '../tools.js'
+import { ms2S, isEqual } from '../tools.js'
 
 
+// creating multidropdown with all available engines
+export const engineSelection = (inst) => {
+    const defaultEngines = []
+    const engineChoices = []
+    for (const [id, engine] of Object.entries(inst.data.engines)) {
+        defaultEngines.push(id)
+        engineChoices.push({ id: id, label: engine.displayName })
+    }
+
+    return {
+        type: 'multidropdown',
+        id: 'engines',
+        label: 'Select Engines:',
+        default: defaultEngines,
+        choices: engineChoices,
+        tooltip: 'Select target engines for this action or feedback'
+    }
+}
 
 // loading data related to connected engines
 export const loadEngines = async (inst) => {
@@ -51,7 +68,7 @@ export const loadEngines = async (inst) => {
         inst.data.module.updateEnginesDuration = Date.now()-start
 
         // checking for a change
-        if (!_.isEqual(inst.data.engines, engines)) {
+        if (!isEqual(inst.data.engines, engines)) {
 
             // saves new engines data
             inst.data.engines = engines
