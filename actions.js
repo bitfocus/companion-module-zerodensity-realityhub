@@ -255,7 +255,7 @@ function createActions(inst) {
             callback: async (event) => {
                 event.options.engines.forEach(async (engine) => {
                     // create endpoint
-                    const endpoint = `engines/${engine}/nodes/${sString(event.options.node)}/properties/${event.options.channel}`
+                    const endpoint = `engines/${engine}/nodes/${sString(event.options.node)}/properties/${sString(event.options.channel)}`
                     
                     // request new mixer channel
                     try {
