@@ -52,7 +52,6 @@ function createActions(inst) {
                                             {},
                                             'medium'
                                         )
-                                        console.log('Stop ', engine)
                                         
                                         // loop over all properties in response to find feedback relevant data
                                         for (const property of properties) {
@@ -149,22 +148,23 @@ function createActions(inst) {
                 },
             ],
             callback: async (event) => {
-                // (inst.config['nodes' + inst.config.features.findIndex((element) => element === 'nodes')] === true)
-
-                console.log(inst.data.module[event.options.data])
                     
                 switch(event.options.data) {
                     case 'updateEnginesData':
-                        console.log('pollEngines()')
+                        if (inst.data.module.updateEnginesData === true) break
+                        pollEngines()
                         break
                     case 'updateNodesData':
-                        console.log('pollNodes()')
+                        if (inst.data.module.updateNodesData === true) break
+                        pollNodes()
                         break
                     case 'updateRundownsData':
-                        console.log('pollRundowns()')
+                        if (inst.data.module.updateRundownsData === true) break
+                        pollRundowns()
                         break
                     case 'updateTemplatesData':
-                        console.log('pollTemplates()')
+                        if (inst.data.module.updateTemplatesData === true) break
+                        pollTemplates()
                         break
                 }
             }
@@ -356,7 +356,6 @@ function createActions(inst) {
 
                     try {
                         // request new properties
-                        console.log(endpoint, body)
                         const response = await inst.PATCH(endpoint, body)
                         if (Object.keys(response).length === 0) throw new Error('ResponseError')
                         inst.data.nodes[engine][event.options.node].properties[response.PropertyPath] = response.Value
@@ -381,7 +380,6 @@ function createActions(inst) {
                     
                     try {
                         // request function trigger
-                        console.log(endpoint)
                         const response = await inst.POST(endpoint)
                         if (response.success !== true) throw new Error('ResponseError')
                     }
@@ -415,7 +413,6 @@ function createActions(inst) {
             description: 'Trigger any button from selected template',
             options: templateButtonOptions(inst.data.templates),
             callback: async (event) => {
-                console.log(event.options.template)
                 const [rID, iID, bID] = event.options[event.options.template].split('_')
                 inst.POST(`playout/rundowns/${rID.substring(1)}/items/${iID.substring(1)}/${sString(bID.substring(1))}`)
             }

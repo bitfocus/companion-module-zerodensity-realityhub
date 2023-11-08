@@ -81,10 +81,18 @@ class RealityHubInstance extends InstanceBase {
 				feedbackRequestActive: {},
 			},
 			timer: {
-				updateEngines: new defaultTimer(this.pollEngines, this),
-				updateNodes: new defaultTimer(this.pollNodes, this),
-				updateRundowns: new defaultTimer(this.pollRundowns, this),
-				updateTemplates: new defaultTimer(this.pollTemplates, this)
+				updateEngines: new defaultTimer(() => {
+					if (inst.data.module.updateEnginesData === false) this.pollEngines()
+				}, this),
+				updateNodes: new defaultTimer(() => {
+					if (inst.data.module.updateNodesData === false) this.pollNodes()
+				}, this),
+				updateRundowns: new defaultTimer(() => {
+					if (inst.data.module.updateRundownsData === false) this.pollRundowns()
+				}, this),
+				updateTemplates: new defaultTimer(() => {
+					if (inst.data.module.updateTemplatesData === false) this.pollTemplates()
+				}, this),
 			}
 		}
 
