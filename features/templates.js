@@ -68,7 +68,7 @@ export const loadTemplates = async (inst) => {
     inst.data.module.updateTemplatesData = true
 
     // update "basicDataLoading" feedback
-    inst.checkFeedbacks('basicDataLoading')
+    inst.checkFeedbacks('basicFeatureDataLoading')
 
     // save start time to calculate elapsed time
     const start = Date.now()
@@ -108,6 +108,7 @@ export const loadTemplates = async (inst) => {
                 if (rundown.name === inst.config.templatePool) templatePool = rundown
             }
         }
+        else templates = {}
 
         // increase current step
         currentStep++
@@ -123,7 +124,7 @@ export const loadTemplates = async (inst) => {
             const newRundown = await inst.POST('playout/rundowns', { name: inst.config.templatePool }, 'medium')
 
             // update templatePool object with new rundown if request was successfull
-            if (newRundown.id !== undefined) {
+            if (newRundown !== null && newRundown.id !== undefined && newRundown.name !== undefined) {
                 templatePool = newRundown
                 inst.log('debug', `New rundown "${newRundown.name}" created as templatePool!`)
             }
@@ -150,7 +151,9 @@ export const loadTemplates = async (inst) => {
                 for (const item of templatePoolItemsData) {
 
                     // update item
-                    await inst.PATCH(`playout/rundowns/${templatePool.id}/items/${item.id}`, {}, 'medium')
+                    const itemUpdate = await inst.PATCH(`playout/rundowns/${templatePool.id}/items/${item.id}`, {}, 'medium')
+
+                    if (itemUpdate === null || itemUpdate.id === undefined || itemUpdate.name === undefined) break
                     
                     // update "templates" object with item properties
                     templates[templatePool.id].items[item.id] = {
@@ -203,9 +206,10 @@ export const loadTemplates = async (inst) => {
 
                 // add template as new item to templatePool rundown
                 const response = await inst.POST(`playout/rundowns/${templatePool.id}/items`, { template: template.name, name: template.name }, 'medium')
-                if (response.name !== undefined) {
+                if (response !== null && response.name !== undefined) {
                     inst.log('debug', `Template "${response.name}" was added to templatePool!`)
                 }
+                else break
             }
 
             // increase current step
@@ -245,11 +249,17 @@ export const loadTemplates = async (inst) => {
                     for (const button of pool.buttons) { templates[templatePool.id].items[pool.id].buttons[button.id] = button.label }
                 }
             }
+            else { templates = {} }
         }
     }
 
     // when no templates available
     else { templates = {} }
+
+    if (inst.enableRequests === false) {
+        inst.data.module.updateTemplatesData = false
+        return
+    }
 
     // only update templates if requested data is diffrent from previous template data
     if (!isEqual(inst.data.templates, templates)) {
@@ -276,5 +286,5 @@ export const loadTemplates = async (inst) => {
     inst.data.module.updateTemplatesData = false
 
     // update "basicDataLoading" feedback
-    inst.checkFeedbacks('basicDataLoading')
+    inst.checkFeedbacks('basicFeatureDataLoading')
 }

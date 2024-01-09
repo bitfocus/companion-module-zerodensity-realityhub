@@ -5,13 +5,15 @@ import { ms2S, isEqual } from '../tools.js'
 
 
 // creating multidropdown with all available engines
-export const engineSelection = (inst) => {
+export const engineSelection = (inst, defaultOnly=false) => {
     const defaultEngines = []
     const engineChoices = []
     for (const [id, engine] of Object.entries(inst.data.engines)) {
         defaultEngines.push(id)
         engineChoices.push({ id: id, label: engine.displayName })
     }
+
+    if (defaultOnly === true) return defaultEngines
 
     return {
         type: 'multidropdown',
@@ -23,6 +25,27 @@ export const engineSelection = (inst) => {
     }
 }
 
+// creating normal dropdown with all available engines
+export const engineSelectionSingle = (inst, defaultOnly=false) => {
+    let defaultEngine = undefined
+    const engineChoices = []
+    for (const [id, engine] of Object.entries(inst.data.engines)) {
+        if (defaultEngine === undefined) defaultEngine = id
+        engineChoices.push({ id: id, label: engine.displayName })
+    }
+
+    if (defaultOnly === true) return defaultEngines
+
+    return {
+        type: 'dropdown',
+        id: 'engine',
+        label: 'Select Engine:',
+        default: defaultEngine,
+        choices: engineChoices,
+        tooltip: 'Select target engine for this action or feedback'
+    }
+}
+
 // loading data related to connected engines
 export const loadEngines = async (inst) => {
 
@@ -30,7 +53,7 @@ export const loadEngines = async (inst) => {
     inst.data.module.updateEnginesData = true
 
     // update data loading feedback
-    inst.checkFeedbacks('basicDataLoading')
+    inst.checkFeedbacks('basicFeatureDataLoading')
 
     // save start time to calculate elapsed time
     const start = Date.now()
@@ -107,5 +130,5 @@ export const loadEngines = async (inst) => {
     inst.data.module.updateEnginesData = false
 
     // update data loading feedback
-    inst.checkFeedbacks('basicDataLoading')
+    inst.checkFeedbacks('basicFeatureDataLoading')
 }

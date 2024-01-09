@@ -23,6 +23,7 @@ const nodeInputOptions = (inputKeys) => {
                 type: 'textinput',
                 id: inputKey,
                 label: label,
+                useVariables: true,
                 isVisibleData: { nodes: data.nodes, properties: data.properties },
                 isVisible: (options, data) => data.nodes.includes(options.node) && data.properties.includes(options[options.node])
             })
@@ -33,6 +34,7 @@ const nodeInputOptions = (inputKeys) => {
                 id: inputKey,
                 label: label,
                 default: false,
+                useVariables: true,
                 isVisibleData: { nodes: data.nodes, properties: data.properties },
                 isVisible: (options, data) => data.nodes.includes(options.node) && data.properties.includes(options[options.node])
             })
@@ -43,6 +45,7 @@ const nodeInputOptions = (inputKeys) => {
                 id: inputKey,
                 label: label,
                 step: 0.1,
+                useVariables: true,
                 isVisibleData: { nodes: data.nodes, properties: data.properties },
                 isVisible: (options, data) => data.nodes.includes(options.node) && data.properties.includes(options[options.node])
             })
@@ -55,11 +58,13 @@ const nodeInputOptions = (inputKeys) => {
 // polling data related to nodes
 export const loadNodes = async (inst) => {
 
+    let output = false
+
     // indicate avtive nodes loading
     inst.data.module.updateNodesData = true
 
     // update "basicDataLoading" feedback
-    inst.checkFeedbacks('basicDataLoading')
+    inst.checkFeedbacks('basicFeatureDataLoading')
 
     // save start time to calculate elapsed time
     const start = Date.now()
@@ -70,7 +75,7 @@ export const loadNodes = async (inst) => {
     // update "updateNodesProgress" variable
     inst.updateVariables({ updateNodesProgress:  inst.data.module.updateNodesProgress + '%' })
 
-    const nodes = {}
+    let nodes = {}
     const engines = Object.keys(inst.data.engines).length
 
     let totalSteps = 0
@@ -112,12 +117,11 @@ export const loadNodes = async (inst) => {
 
                 // request properties of current node in current engine with "low" priority
                 const propertiesData = await inst.GET(`engines/${engine}/nodes/${sString(node.NodePath)}/properties`, {}, 'low')
-
                 // increase current step
                 currentStep++
 
                 // check if node properties request was successfull and response has at least 1 property
-                if (propertiesData !== null && Array.isArray(propertiesData) && propertiesData.length > 0) {
+                if (propertiesData !== null && Array.isArray(propertiesData)) {
 
                     // loop over all properties
                     for (const property of propertiesData) {
@@ -129,12 +133,18 @@ export const loadNodes = async (inst) => {
                         nodes[engine][node.NodePath].properties[property.PropertyPath] = property.Value
                     }
                 }
+                else {
+                    nodes = {}
+                    break
+                }
 
-                // request properties of current node in current engine with "low" priority
+                if (Object.keys(nodes).length === 0) break
+
+                // request functions of current node in current engine with "low" priority
                 const functionsData = await inst.GET(`engines/${engine}/nodes/${sString(node.NodePath)}/functions`, {}, 'low')
                     
                 // check if node functions request was successfull and response has at least 1 function
-                if (functionsData !== null && Array.isArray(functionsData) && functionsData.length > 0) {
+                if (functionsData !== null && Array.isArray(functionsData)) {
 
                     // loop over all functions
                     for (const func of functionsData) {
@@ -142,6 +152,12 @@ export const loadNodes = async (inst) => {
                         nodes[engine][node.NodePath].functions.push(func.FunctionPath)
                     }
                 }
+                else {
+                    nodes = {}
+                    break
+                }
+
+                if (Object.keys(nodes).length === 0) break
 
                 // update progress if current step is below total steps
                 if (currentStep < totalSteps) {
@@ -151,8 +167,19 @@ export const loadNodes = async (inst) => {
                 }
             }
         }
+        else {
+            nodes = {}
+            break
+        }
+
+        if (Object.keys(nodes).length === 0) break
 
         if (!inst.moduleInitiated) inst.log('info', `${Object.keys(nodes[engine]).length} nodes loaded from ${inst.data.engines[engine].displayName}`)
+    }
+
+    if (inst.enableRequests === false) {
+        inst.data.module.updateNodesData = false
+        return
     }
 
     // checks for a change, if request shows same data, don't update
@@ -160,7 +187,7 @@ export const loadNodes = async (inst) => {
         inst.data.nodes = nodes
         inst.setActionDefinitions(getActions(inst))
         inst.setFeedbackDefinitions(getFeedbacks(inst))
-        inst.checkFeedbacks('nodesProperty')
+        inst.checkFeedbacks('nodesCheckPropertyValue')
     }
 
     // set progress to 100%
@@ -179,7 +206,7 @@ export const loadNodes = async (inst) => {
     inst.data.module.updateNodesData = false
 
     // update "basicDataLoading" feedback
-    inst.checkFeedbacks('basicDataLoading')
+    inst.checkFeedbacks('basicFeatureDataLoading')
 }
 
 // create array of node property inputs with visibility logic

@@ -13,6 +13,7 @@ import { loadNodes } from './features/nodes.js'
 import { loadRundowns } from './features/rundowns.js'
 import { loadTemplates } from './features/templates.js'
 import { SLEEP, contains, defaultTimer, variableExecutor } from './tools.js'
+import { cueExecutor } from './cueExecutor.js'
 
 
 
@@ -30,6 +31,10 @@ class RealityHubInstance extends InstanceBase {
 			response: 1000
 		}
 
+		this.requestErrors = 0
+		this.requestErrorThreshold = 10
+
+		this.lastRequest = 0
 		this.enableRequests = false
 		this.connectionEstablished = false
 		this.moduleInitiated = false
@@ -82,38 +87,30 @@ class RealityHubInstance extends InstanceBase {
 			},
 			timer: {
 				updateEngines: new defaultTimer(() => {
-					if (inst.data.module.updateEnginesData === false) this.pollEngines()
+					if (this.data.module.updateEnginesData === false) this.pollEngines(this)
 				}, this),
 				updateNodes: new defaultTimer(() => {
-					if (inst.data.module.updateNodesData === false) this.pollNodes()
+					if (this.data.module.updateNodesData === false) this.pollNodes(this)
 				}, this),
 				updateRundowns: new defaultTimer(() => {
-					if (inst.data.module.updateRundownsData === false) this.pollRundowns()
+					if (this.data.module.updateRundownsData === false) this.pollRundowns(this)
 				}, this),
 				updateTemplates: new defaultTimer(() => {
-					if (inst.data.module.updateTemplatesData === false) this.pollTemplates()
+					if (this.data.module.updateTemplatesData === false) this.pollTemplates(this)
 				}, this),
 			}
 		}
 
 		// create executors
 		this.executors = {
-			variables: new variableExecutor(this)
+			variables: new variableExecutor(this),
+			requests: new cueExecutor(['high', 'medium', 'low'])
 		}
-
-		// create cue object for requests with descending priority
-		this.rCue = {
-			high: [],
-			medium: [],
-			low: []
-		}
-
 	}
 
 	// handle module shutdown
 	async destroy() {
 		this.enableRequests = false
-		this.connectionEstablished = false
 		this.moduleInitiated = false
 
 		this.data.timer.updateEngines.stop()
@@ -121,6 +118,9 @@ class RealityHubInstance extends InstanceBase {
 		this.data.timer.updateRundowns.stop()
 		this.data.timer.updateTemplates.stop()
 		this.executors.variables.stop()
+		this.executors.requests.block()
+		await SLEEP(1000)
+		this.executors.requests.clear()
 	}
 
 	// create config fields
@@ -129,8 +129,7 @@ class RealityHubInstance extends InstanceBase {
 	// run "configUpdated()" when module gets enabled
 	init = async (config) => this.configUpdated(config)
 
-	async initModule() {
-
+	async initModule(fastInit = false) {
 		// request "engines" data to check connection to host
 		if (await this.GET('engines') === null) {
 			const retryDelay = 10
@@ -159,6 +158,26 @@ class RealityHubInstance extends InstanceBase {
 
 		// start variable updater
 		this.executors.variables.start(100)
+		
+		this.log('info', 'Connection succeeded!')
+		this.connectionEstablished = true
+		this.outputErrors = true
+
+		this.data.module.updateEnginesProgress = 0
+		this.data.module.updateEnginesDuration = 0
+		this.data.module.updateNodesProgress = 0
+		this.data.module.updateNodesDuration = 0
+		this.data.module.updateRundownsProgress = 0
+		this.data.module.updateRundownsDuration = 0
+		this.data.module.updateTemplatesProgress = 0
+		this.data.module.updateTemplatesDuration = 0
+
+		if (this.enableRequests !== true) return
+
+		this.updateStatus('LOAD: Engines data ...')
+		this.log('info', 'Load engines data...')
+		await this.pollEngines(this) // request engines data
+		this.log('info', `${Object.keys(this.data.engines).length} engines found!`)
 
 		// set action definitions
 		this.setActionDefinitions(getActions(this))
@@ -180,31 +199,25 @@ class RealityHubInstance extends InstanceBase {
 
 		// set preset definitions
 		this.setPresetDefinitions(getPresets(this))
-		
-		this.log('info', 'Connection succeeded!')
-		this.connectionEstablished = true
-		this.outputErrors = true
 
-		this.updateStatus('LOAD: Engines data ...')
-		this.log('info', 'Load engines data...')
-		await this.pollEngines(this) // request engines data
-		this.log('info', `${Object.keys(this.data.engines).length} engines found!`)
-
-		if (contains(this.config.features, 'rundowns')) { // check if rundowns feature is selected in config
+		// check if rundowns feature is selected in config
+		if (contains(this.config.features, 'rundowns') && this.enableRequests === true && fastInit === false) {
 			this.updateStatus('LOAD: Rundowns data ...', '0%')
 			this.log('info', 'Load rundowns data...')
 			await this.pollRundowns(this) // request rundowns data
 			this.log('info', `${Object.keys(this.data.rundowns).length} rundowns found!`)
 		}
 
-		if (contains(this.config.features, 'templates')) { // check if templates feature is selected in config
+		// check if templates feature is selected in config
+		if (contains(this.config.features, 'templates') && this.enableRequests === true && fastInit === false) {
 			this.updateStatus('LOAD: Templates data ...', '0%')
 			this.log('info', 'Load templates data...')
 			await this.pollTemplates(this) // request templates data
 			this.log('info', `${Object.keys(Object.values(this.data.templates)[0].items).length} templates found!`)
 		}
 
-		if (contains(this.config.features, 'nodes')) { // check if nodes feature is selected in config
+		// check if nodes feature is selected in config
+		if (contains(this.config.features, 'nodes') && this.enableRequests === true && fastInit === false) {
 			this.updateStatus('LOAD: Nodes data ...', '0%')
 			this.log('info', 'Load nodes data...')
 			await this.pollNodes(this) // request nodes data
@@ -212,6 +225,8 @@ class RealityHubInstance extends InstanceBase {
 			for (const nodes of Object.values(this.data.nodes)) allNodes += Object.keys(nodes).length
 			this.log('info', `${allNodes} nodes found!`)
 		}
+
+		if (this.enableRequests !== true) return
 
 		this.moduleInitiated = true
 		this.updateStatus('ok')
@@ -245,49 +260,22 @@ class RealityHubInstance extends InstanceBase {
 
 	}
 
-	async initRequests(interval) { 
-		this.enableRequests = true
-
-		// create time variable to send request in given interval
-		let last = Date.now()
-
-		// start loop for sending requests from cue
-		while (this.enableRequests) {
-			// send highest priority first
-			if (this.rCue.high.length > 0) this.rCue.high.shift()()
-
-			// send 'medium' priority if no 'high' priority is in cue
-			else if (this.rCue.medium.length > 0) this.rCue.medium.shift()()
-
-			// send 'low' priority if no 'high' or 'medium' priority is in cue
-			else if (this.rCue.low.length > 0) this.rCue.low.shift()()
-
-			// wait for 'interval' ms till next request to prevent overload
-			if (last+interval > Date.now()) await SLEEP((last+interval)-Date.now())
-			
-			// updating time variable
-			last = Date.now()
-		}
-	}
-
 	// handle errors
 	async errorModule(error='unknown error', subject='unknown subject') {
+		if (this.requestErrorThreshold > this.requestErrors) return
+
 		// log new errors
 		if (this.errors.last.error !== error && this.errors.last.subject !== subject) {
 			this.errors.last = { error: error, subject: subject }
 			this.log('error', `${error} for "${subject}"`)
-			this.updateStatus(`ERROR: ${error}`)
+			this.updateStatus((error === 'TimeoutError') ? 'ConnectionFailure' : `ERROR: ${error}`)
 		}
 
 		// clear request cue if request errors occur
 		if (['RequestError', 'TimeoutError'].includes(error)) {
-			this.rCue = {
-				high: [],
-				medium: [],
-				low: []
-			}
-
+			this.executors.requests.clear()
 			this.connectionEstablished = false
+
 			if (await this.GET('engines') !== null) this.initModule()
 		}
 	}
@@ -300,36 +288,41 @@ class RealityHubInstance extends InstanceBase {
 			return
 		}
 
-		this.moduleInitiated = false
+		let featuresChanged = false
+		if (this.config.features === undefined) this.config.features = []
+		for (const feature of config.features) if (!this.config.features.includes(feature)) featuresChanged = true
+		for (const feature of this.config.features) if (!config.features.includes(feature)) featuresChanged = true
 
-		this.data.timer.updateEngines.stop()
-		this.data.timer.updateRundowns.stop()
-		this.data.timer.updateTemplates.stop()
-		this.executors.variables.stop()
-
-		// start request loop if not already enabled
-		if (!this.enableRequests) this.initRequests(10)
+		await this.destroy()
+		this.executors.requests.unblock()
 
 		// reconnect, if host changed
-		if (this.config.host !== config.host || retry === true) {
+		if (this.config.host !== config.host || retry === true || featuresChanged === true ) {
 			// update config variable
 			this.config = config
 			this.errors.last = {}
 
 			this.updateStatus('connecting')
 			this.log('info', 'Try to connect...')
-			
+		
+			this.enableRequests = true
+			this.moduleInitiated = false
 			this.initModule()
 		}
 		// check if module can be initiated without reconnecting
 		else if (this.connectionEstablished) {
 			// update config variable
 			this.config = config
-			this.initModule()
+		
+			this.enableRequests = true
+			this.initModule(true)
 		}
 	}
 
-	REQ(method, url, body, importance) {
+	async REQ(method, url, body, channel) {
+		// return null if requests are not allowed
+		if (this.enableRequests !== true) return null
+
 		// create request parameters object
 		const parameters = {
 			responseType: 'json',
@@ -339,38 +332,39 @@ class RealityHubInstance extends InstanceBase {
 		// add body to "parameters" object if not empty
 		if (Object.keys(body).length > 0) parameters.json = body
 
-		// return promise until response
-		return new Promise((resolve) => {
+		let response = null
+
+		try {
 			// handle "GET" requests
-			if (method === 'GET') this.rCue[importance].push(() => {
-				got.get(url, parameters).json().then((res) => resolve(res)).catch((error) => {
-					this.errorModule(error.name, error.options.url)
-					resolve(null)
-				})
-			})
+			if (method === 'GET') response = await got.get(url, parameters).json()
 
 			// handle "POST" requests
-			else if (method === 'POST') this.rCue[importance].push(() => {
-				got.post(url, parameters).json().then((res) => resolve(res)).catch((error) => {
-					this.errorModule(error.name, error.options.url)
-					resolve(null)
-				})
-			})
-			
+			else if (method === 'POST') response = await got.post(url, parameters).json()
+
 			// handle "PATCH" requests
-			else if (method === 'PATCH') this.rCue[importance].push(() => {
-				got.patch(url, parameters).json().then((res) => resolve(res)).catch((error) => {
-					this.errorModule(error.name, error.options.url)
-					resolve(null)
-				})
-			})
-			else resolve(null)
-		})
+			else if (method === 'PATCH') response = await got.patch(url, parameters).json()
+
+			this.requestErrors = 0
+		}
+		catch(error) {
+			this.requestErrors++
+			this.errorModule(error.name, error.options.url)
+		}
+		finally {
+			// log request debug message if enabled
+			if (this.config.debugRequests === true) this.log('debug', `${method} request "${url}"`)
+
+			// return null if requests are not allowed
+			if (this.enableRequests !== true) return null
+
+			// return response
+			return response
+		}
 	}
 
-	GET = async (endpoint, body={}, importance='high') => await this.REQ('GET', `http://${this.config.host}/api/rest/v1/${endpoint}`, body, importance)
-	POST = async (endpoint, body={}, importance='high') => await this.REQ('POST', `http://${this.config.host}/api/rest/v1/${endpoint}`, body, importance)
-	PATCH = async (endpoint, body={}, importance='high') => await this.REQ('PATCH', `http://${this.config.host}/api/rest/v1/${endpoint}`, body, importance)
+	GET = async (endpoint, body={}, importance='high') => this.REQ('GET', `http://${this.config.host}/api/rest/v1/${endpoint}`, body, importance)
+	POST = async (endpoint, body={}, importance='high') => this.REQ('POST', `http://${this.config.host}/api/rest/v1/${endpoint}`, body, importance)
+	PATCH = async (endpoint, body={}, importance='high') => this.REQ('PATCH', `http://${this.config.host}/api/rest/v1/${endpoint}`, body, importance)
 }
 
 runEntrypoint(RealityHubInstance, upgradeScripts)

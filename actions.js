@@ -20,13 +20,18 @@ function createActions(inst) {
                     type: 'textinput',
                     label: 'Node Name:',
                     id: 'node',
+                    useVariables: true,
+                    required: true,
                     default: 'Mixer_0',
                     tooltip: 'Enter name of mixer node. Node names should match across all engines!'
                 }
             ],
             callback: async (event) => {
-                // return if no node is specified
-                if (event.options.node === '') return
+                // parse variables from text input
+                event.options.node = await inst.parseVariablesInString(event.options.node)
+
+                // return if required values empty
+                if ([event.options.node].includes('')) return
 
                 // loop ovber all selected engines
                 event.options.engines.forEach(async (engine) => {
@@ -72,7 +77,7 @@ function createActions(inst) {
                                         }
 
                                         // check feedbacks to update buttons
-                                        inst.checkFeedbacks('basicMixerChannel', 'nodesProperty')
+                                        inst.checkFeedbacks('basicMixerChannel', 'nodesCheckPropertyValue')
                                     }, property.Value*1030)
                                     break
                                 }
@@ -87,8 +92,8 @@ function createActions(inst) {
                 })
             }
         },
-        basicLoadData: {
-            name: 'Basic: Load Data',
+        basicLoadFeatureData: {
+            name: 'Basic: Load Feature Data',
             description: 'Load specific data from RealityHub server',
             options: [
                 {
@@ -152,21 +157,140 @@ function createActions(inst) {
                 switch(event.options.data) {
                     case 'updateEnginesData':
                         if (inst.data.module.updateEnginesData === true) break
-                        inst.pollEngines()
+                        inst.pollEngines(inst)
                         break
                     case 'updateNodesData':
                         if (inst.data.module.updateNodesData === true) break
-                        inst.pollNodes()
+                        else if (contains(inst.config.features, 'nodes')) inst.pollNodes(inst)
                         break
                     case 'updateRundownsData':
                         if (inst.data.module.updateRundownsData === true) break
-                        inst.pollRundowns()
+                        else if (contains(inst.config.features, 'rundowns')) 
+                        inst.pollRundowns(inst)
                         break
                     case 'updateTemplatesData':
                         if (inst.data.module.updateTemplatesData === true) break
-                        inst.pollTemplates()
+                        else if (contains(inst.config.features, 'templates')) 
+                        inst.pollTemplates(inst)
                         break
                 }
+            }
+        },
+        basicSetConstantDataValue: {
+            name: 'Basic: Set Constant Data Value',
+            description: 'Set the value of constant data nodes such as "ConstantBoolean", "ConstantFloat", "ConstantInteger" and "ConstantString".',
+            options: [
+                engineSelection(inst),
+                {
+                    type: 'dropdown',
+                    label: 'Data Type:',
+                    id: 'type',
+                    default: 'boolean',
+                    choices: [
+                        { id: 'boolean', label: 'ConstantBoolean' },
+                        { id: 'float', label: 'ConstantFloat' },
+                        { id: 'integer', label: 'ConstantInteger' },
+                        { id: 'string', label: 'ConstantString' },
+                    ],
+                    tooltip: 'Select data type you want to change',
+                },
+                {
+                    type: 'textinput',
+                    label: 'Node Name:',
+                    id: 'node',
+                    useVariables: true,
+                    required: true,
+                    tooltip: 'Enter name of node. Node names should match across all engines!'
+                },
+                {
+                    type: 'checkbox',
+                    label: 'Boolean State:',
+                    id: 'boolean',
+                    tooltip: 'Enter the "Boolean" value for the specified "ConstantBoolean" node',
+                    isVisible: (options) => options.type === 'boolean'
+                },
+                {
+                    type: 'number',
+                    label: 'Float Value:',
+                    id: 'float',
+                    useVariables: true,
+                    default: 0,
+                    step: 0.01,
+                    tooltip: 'Enter the "Float" value for the specified "ConstantFloat" node',
+                    isVisible: (options) => options.type === 'float'
+                },
+                {
+                    type: 'number',
+                    label: 'Integer Value:',
+                    id: 'integer',
+                    useVariables: true,
+                    default: 0,
+                    step: 1,
+                    tooltip: 'Enter the "Integer" value for the specified "ConstantInteger" node',
+                    isVisible: (options) => options.type === 'integer'
+                },
+                {
+                    type: 'textinput',
+                    label: 'String Value:',
+                    id: 'string',
+                    useVariables: true,
+                    default: '',
+                    tooltip: 'Enter the "String" value for the specified "ConstantString" node',
+                    isVisible: (options) => options.type === 'string'
+                }
+            ],
+            callback: async (event) => {
+                // return if required values empty
+                if ([event.options.node].includes('')) return false
+
+                // parse variables from text input
+                event.options.node = await inst.parseVariablesInString(event.options.node)
+                event.options.value = await inst.parseVariablesInString(event.options[event.options.type])
+
+                switch(event.options.type) {
+                    case 'boolean':
+                        event.options.property = 'Default%2F%2FBoolean%2F0'
+                        event.options.value = (event.options.value !== 'true') ? false : true
+                        break
+
+                    case 'float':
+                        event.options.property = 'Default%2F%2FFloat%2F0'
+                        event.options.value = parseFloat(event.options.value)
+                        break
+
+                    case 'integer':
+                            event.options.property = 'Default%2F%2FInteger%2F0'
+                            event.options.value = parseInt(event.options.value)
+                            break
+
+                    case 'string':
+                        event.options.property = 'Default%2F%2FString%2F0'
+                        event.options.value = sString(event.options.value)
+                        break
+
+                    // return on invalid data type
+                    default: return
+                }
+
+                // return on invalid value parse
+                if (event.options.value === 'NaN') return
+
+                // loop over all selected engines
+                event.options.engines.forEach(async (engine) => {
+                    // create endpoint
+                    const endpoint = `engines/${engine}/nodes/${sString(event.options.node)}/properties/${event.options.property}`
+
+                    // request new file path
+                    try {
+                        const response = await inst.PATCH(endpoint, { Value:  event.options.value })
+                        if (Object.keys(response).length === 0) throw new Error('ResponseError')
+                        deepSetProperty(inst.data.nodes, [engine, event.options.node, 'properties', response.PropertyPath], response.Value)
+                        inst.checkFeedbacks('basicDisplayConstantDataValue', 'basicCheckConstantDataValue', 'nodesCheckPropertyValue')
+                    }
+                    catch(error) {
+                        inst.log('error', `Action execution failed! (action: ${event.actionId}, engine: ${engine})\n` + error)
+                    }
+                })
             }
         },
         basicSetMediaFilePath: {
@@ -178,6 +302,8 @@ function createActions(inst) {
                     type: 'textinput',
                     label: 'Node Name:',
                     id: 'node',
+                    useVariables: true,
+                    required: true,
                     default: 'MediaInput_0',
                     tooltip: 'Enter name of node. Node names should match across all engines!'
                 },
@@ -185,6 +311,7 @@ function createActions(inst) {
                     type: 'textinput',
                     label: 'Directory:',
                     id: 'directory',
+                    useVariables: true,
                     default: `\\\\${inst.config.host}\\Reality_Share\\Reality\\Assets\\`,
                     tooltip: 'Enter the root directory of all files (use "backslash" \\ to indicate sub directory)'
                 },
@@ -192,11 +319,20 @@ function createActions(inst) {
                     type: 'textinput',
                     label: 'File Path:',
                     id: 'path',
+                    useVariables: true,
                     default: '',
                     tooltip: 'Enter the file path (use "backslash" \\ to indicate sub directory)'
                 }
             ],
             callback: async (event) => {
+                // parse variables from text input
+                event.options.node = await inst.parseVariablesInString(event.options.node)
+                event.options.directory = await inst.parseVariablesInString(event.options.directory)
+                event.options.path = await inst.parseVariablesInString(event.options.path)
+
+                // return if required values empty
+                if ([event.options.node].includes('')) return
+
                 // add backslash to end of directory if not there
                 if (!event.options.directory.endsWith('\\')) event.options.directory += '\\'
 
@@ -213,7 +349,7 @@ function createActions(inst) {
                         const response = await inst.PATCH(endpoint, { Value:  sString(event.options.directory + event.options.path) })
                         if (Object.keys(response).length === 0) throw new Error('ResponseError')
                         deepSetProperty(inst.data.nodes, [engine, event.options.node, 'properties', response.PropertyPath], response.Value)
-                        inst.checkFeedbacks('basicFilePath', 'nodesProperty')
+                        inst.checkFeedbacks('basicFilePath', 'nodesCheckPropertyValue')
                     }
                     catch(error) {
                         inst.log('error', `Action execution failed! (action: ${event.actionId}, engine: ${engine})\n` + error)
@@ -230,39 +366,60 @@ function createActions(inst) {
                     type: 'textinput',
                     label: 'Node Name:',
                     id: 'node',
+                    useVariables: true,
+                    required: true,
                     default: 'Mixer_0',
                     tooltip: 'Enter name of mixer node. Node names should match across all engines!'
                 },
                 {
                     type: 'dropdown',
-                    label: 'Channel:',
+                    label: 'Target:',
                     id: 'channel',
                     default: 'Channels%2F%2FPreviewChannel%2F0',
                     choices: [
                         { id: 'Channels%2F%2FPreviewChannel%2F0', label: 'Preview'},
                         { id: 'Channels%2F%2FProgramChannel%2F0', label: 'Program'}
                     ],
-                    tooltip: 'Select preview or program channel as target for this action'
+                    tooltip: 'Select "Preview" or "Program" as target for this action'
                 },
                 {
-                    type: 'textinput',
-                    label: 'Channel Name:',
+                    type: 'dropdown',
+                    label: 'Channel:',
                     id: 'name',
                     default: 'Channel1',
-                    tooltip: 'Enter name of channel. Channel names should match across all engines!'
+                    choices: [
+                        { id: 'Channel1', label: 'Channel 1'},
+                        { id: 'Channel2', label: 'Channel 2'},
+                        { id: 'Channel3', label: 'Channel 3'},
+                        { id: 'Channel4', label: 'Channel 4'},
+                        { id: 'Channel5', label: 'Channel 5'},
+                        { id: 'Channel6', label: 'Channel 6'},
+                        { id: 'Channel7', label: 'Channel 7'},
+                        { id: 'Channel8', label: 'Channel 8'},
+                        { id: 'Channel9', label: 'Channel 9'},
+                        { id: 'Channel10', label: 'Channel 10'}
+                    ],
+                    tooltip: 'Select channel to set to selected target'
                 },
             ],
             callback: async (event) => {
+                // parse variables from text input
+                event.options.node = await inst.parseVariablesInString(event.options.node)
+
+                // return if required values empty
+                if ([event.options.node].includes('')) return
+
                 event.options.engines.forEach(async (engine) => {
                     // create endpoint
-                    const endpoint = `engines/${engine}/nodes/${sString(event.options.node)}/properties/${sString(event.options.channel)}`
+                    const endpoint = `engines/${engine}/nodes/${sString(event.options.node)}/properties/${event.options.channel}`
                     
                     // request new mixer channel
                     try {
                         const response = await inst.PATCH(endpoint, { Value: event.options.name })
+
                         if (Object.keys(response).length === 0) throw new Error('ResponseError')
                         deepSetProperty(inst.data.nodes, [engine, event.options.node, 'properties', response.PropertyPath], response.Value)
-                        inst.checkFeedbacks('basicMixerChannel', 'nodesProperty')
+                        inst.checkFeedbacks('basicMixerChannel', 'nodesCheckPropertyValue')
                     }
                     catch(error) {
                         inst.log('error', `Action execution failed! (action: ${event.actionId}, engine: ${engine})\n` + error)
@@ -279,6 +436,8 @@ function createActions(inst) {
                     type: 'textinput',
                     label: 'Node Name:',
                     id: 'node',
+                    useVariables: true,
+                    required: true,
                     default: '',
                     tooltip: 'Enter name of node. Node names should match across all engines!'
                 },
@@ -286,11 +445,20 @@ function createActions(inst) {
                     type: 'textinput',
                     label: 'Function Name:',
                     id: 'function',
+                    useVariables: true,
+                    required: true,
                     default: 'Do Transition',
                     tooltip: 'Enter function name. Function names should match across all engines!'
                 }
             ],
             callback: async (event) => {
+                // parse variables from text input
+                event.options.node = await inst.parseVariablesInString(event.options.node)
+                event.options.function = await inst.parseVariablesInString(event.options.function)
+
+                // return if required values empty
+                if ([event.options.node, event.options.function].includes('')) return
+
                 // convert function name to proper function id
                 const functionId = convertToFunctionId(event.options.function)
 
@@ -310,8 +478,73 @@ function createActions(inst) {
                 })
             }
         },
-        nodeSetProperty: featureInactive(
-            'Nodes', 'Node: Set Property (INACTIVE!)', 'Set any property of specified node for selected engines'
+        basicTriggerMediaFunction: {
+            name: 'Basic: Trigger Media Function',
+            description: 'Trigger playback functions of specified media node for selected engines',
+            options: [
+                engineSelection(inst),
+                {
+                    type: 'textinput',
+                    label: 'Node Name:',
+                    id: 'node',
+                    default: 'MediaInput_0',
+                    tooltip: 'Enter name of media node. Node names should match across all engines!'
+                },
+                {
+                    type: 'dropdown',
+                    label: 'Function:',
+                    id: 'function',
+                    default: 'Default%2F%2FPlay%2F0',
+                    choices: [
+                        { id: 'Default%2F%2FPlay%2F0', label: 'Play'},
+                        { id: 'Default%2F%2FPause%2F0', label: 'Pause'},
+                        { id: 'Default%2F%2FRewind%2F0', label: 'Rewind'}
+                    ],
+                    tooltip: 'Select playback function'
+                },
+                {
+                    type: 'checkbox',
+                    label: 'Loop Media:',
+                    id: 'loop',
+                    default: true,
+                    tooltip: 'Change between loop playback and single playback'
+                }
+            ],
+            callback: async (event) => {
+                // parse variables from text input
+                event.options.node = await inst.parseVariablesInString(event.options.node)
+
+                // return if required values empty
+                if ([event.options.node].includes('')) return
+
+                // loop ovber all selected engines
+                event.options.engines.forEach(async (engine) => {
+                    // create endpoints
+                    const endpoint1 = `engines/${engine}/nodes/${sString(event.options.node)}/functions/${event.options.function}`
+                    const endpoint2 = `engines/${engine}/nodes/${sString(event.options.node)}/properties/Media%2F%2FLoop%2F0`
+
+                    try {
+                        // trigger playback function
+                        const response1 = await inst.POST(endpoint1)
+
+                        // throw error if "success" !== true
+                        if (response1.success !== true) throw new Error('ResponseError')
+
+                        // change loop property
+                        const response2 = await inst.PATCH(endpoint2, { Value: event.options.loop })
+
+                        // throw error if loop property change was not successful
+                        if (response2.PropertyPath !== 'Media//Loop/0' || response2.Value !== event.options.loop) throw new Error('PropertyError')
+                        deepSetProperty(inst.data.nodes, [engine, event.options.node, 'properties', response2.PropertyPath], response2.Value)
+                    }
+                    catch(error) {
+                        inst.log('error', `Action execution failed! (action: ${event.actionId}, engine: ${engine})\n` + error)
+                    }
+                })
+            },
+        },
+        nodeSetPropertyValue: featureInactive(
+            'Nodes', 'Node: Set Property Value (INACTIVE!)', 'Set any property of specified node for selected engines'
         ),
         nodeTriggerFunction: featureInactive(
             'Nodes', 'Node: Trigger Function (INACTIVE!)', 'Trigger any function of specified node for selected engines'
@@ -327,8 +560,8 @@ function createActions(inst) {
     // set node actions if feature selected
     if (contains(inst.config.features, 'nodes') && Object.keys(inst.data.nodes).length > 0) {
         
-        actions.nodeSetProperty = {
-            name: 'Node: Set Property',
+        actions.nodeSetPropertyValue = {
+            name: 'Node: Set Property Value',
             description: 'Set any property of specified node for selected engines',
             options: nodePropertiesOptions(inst),
             callback: async (event) => {
@@ -344,11 +577,11 @@ function createActions(inst) {
                             const bodyKeys = inputKey.split(',')
     
                             if (bodyKeys.length === 1 && event.options[inputKey] !== undefined) {
-                                body.Value = sString(event.options[inputKey])
+                                body.Value = sString(await inst.parseVariablesInString(event.options[inputKey]))
                             }
                             else if (bodyKeys.length === 2 && event.options[inputKey] !== undefined) {
                                 if (body[bodyKeys[0]] === undefined) body[bodyKeys[0]] = {}
-                                body[bodyKeys[0]][bodyKeys[1]] = event.options[inputKey]
+                                body[bodyKeys[0]][bodyKeys[1]] = await inst.parseVariablesInString(event.options[inputKey])
                             }
                             else return
                         }
@@ -359,7 +592,7 @@ function createActions(inst) {
                         const response = await inst.PATCH(endpoint, body)
                         if (Object.keys(response).length === 0) throw new Error('ResponseError')
                         inst.data.nodes[engine][event.options.node].properties[response.PropertyPath] = response.Value
-                        inst.checkFeedbacks('nodesProperty', 'basicMixerChannel', 'basicMediaFilePath')
+                        inst.checkFeedbacks('nodesCheckPropertyValue', 'basicMixerChannel', 'basicMediaFilePath','basicDisplayConstantDataValue',  'basicCheckConstantDataValue')
                     }
                     catch(error) {
                         inst.log('error', `Action execution failed! (action: ${event.actionId}, engine: ${engine})\n` + error)

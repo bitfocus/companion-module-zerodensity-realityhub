@@ -15,17 +15,21 @@ In addition please make sure to expose Companion to the same network as the Real
 
 **Available Actions:**
 * Basic: Do Transition
-* Basic: Load Data
+* Basic: Load Feature Data
+* Basic: Set Constant Data Value
 * Basic: Set Media File Path
 * Basic: Set Mixer Channel
 * Basic: Trigger Function
-* Node: Set Property
+* Basic: Trigger Media Function
+* Node: Set Property Value
 * Node: Trigger Function
 * Rundown: Button Press
 * Template: Button Press
 
 **Available Feedbacks:**
-* Basic: Data Loading
+* Basic: Check Constant Data Value
+* Basic: Display Constant Data Value
+* Basic: Feature Data Loading
 * Basic: Feature Selected
 * Basic: Media File Path
 * Basic: Mixer Channel
@@ -36,10 +40,10 @@ In addition please make sure to expose Companion to the same network as the Real
 **Available Variables:**
 * Connected Engines
 * Engine Names
-* Engine IP-Addresses
 * Engine Roles
 * Engine States
-* Engine Active Projects
+* Engine IP-Addresses
+* Engine Active Project Launched
 * Update Engines-Data Duration
 * Update Nodes-Data Duration
 * Update Nodes-Data Progress

@@ -74,7 +74,7 @@ export const loadRundowns = async (inst) => {
     inst.data.module.updateRundownsData = true
 
     // update data loading feedback
-    inst.checkFeedbacks('basicDataLoading')
+    inst.checkFeedbacks('basicFeatureDataLoading')
 
     // save start time to calculate elapsed time
     const start = Date.now()
@@ -86,7 +86,7 @@ export const loadRundowns = async (inst) => {
     inst.updateVariables({ updateRundownsProgress:  inst.data.module.updateRundownsProgress + '%' })
 
     // create empty "rundowns" object
-    const rundowns = {}
+    let rundowns = {}
 
     let totalSteps = 0
     let currentStep = 0
@@ -126,6 +126,12 @@ export const loadRundowns = async (inst) => {
                     for (const button of item.buttons) rundowns[rundown.id].items[item.id].buttons[button.id] = button.label
                 }
             }
+            else {
+                rundowns = {}
+                break
+            }
+
+            if (Object.keys(rundowns).length === 0) break
 
             // increasing current step
             currentStep++
@@ -141,6 +147,11 @@ export const loadRundowns = async (inst) => {
 
     // when rundowns request fails
     else { rundowns = {} }
+
+    if (inst.enableRequests === false) {
+        inst.data.module.updateRundownsData = false
+        return
+    }
 
     // only update rundowns if requested data is diffrent from previous rundown data
     if (!isEqual(inst.data.rundowns, rundowns)) {
@@ -166,5 +177,5 @@ export const loadRundowns = async (inst) => {
     inst.data.module.updateRundownsData = false
 
     // update "basicDataLoading" feedback
-    inst.checkFeedbacks('basicDataLoading')
+    inst.checkFeedbacks('basicFeatureDataLoading')
 }

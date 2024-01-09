@@ -150,5 +150,13 @@ export const createConfigFields = [
         default: 'CompanionTemplatesPool',
         tooltip: 'Enter a name for the rundown, where templates are stored to press buttons from',
         isVisible: (options) => Array.isArray(options.features) && options.features.includes('templates')
+    },
+    {
+        type: 'checkbox',
+        id: 'debugRequests',
+        width: 8,
+        label: 'Log debug information on all api requests:',
+        default: false,
+        tooltip: 'If enabled, the module will log all api requests!',
     }
 ]
