@@ -1,2 +1,2 @@
-# companion-module-generic-http
+# companion-module-zerodensity-realityhub
 See HELP.md and LICENSE
