@@ -280,7 +280,7 @@ function createActions(inst) {
                     // create endpoint
                     const endpoint = `engines/${engine}/nodes/${sString(event.options.node)}/properties/${event.options.property}`
 
-                    // request new file path
+                    // request new constant value
                     try {
                         const response = await inst.PATCH(endpoint, { Value:  event.options.value })
                         if (Object.keys(response).length === 0) throw new Error('ResponseError')
