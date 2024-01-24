@@ -83,6 +83,11 @@ function createFeedbacks(inst) {
                     inst.data.module.feedbackRequestActive[`/e:${event.options.engine}/n:${event.options.node}`] = true
                     inst.log('debug', `FeedbackRequestActive: "/e:${event.options.engine}/n:${event.options.node}"`)
                     inst.GET(`engines/${event.options.engine}/nodes/${sString(event.options.node)}/properties`, {}, 'medium').then((response) => {
+                        if (!Array.isArray(response)) {
+                            inst.data.module.feedbackRequestActive[`/e:${event.options.engine}/n:${event.options.node}`] = false
+                            return
+                        }
+
                         for (const property of response) {
                             if (event.options.property === property.PropertyPath) {
                                 deepSetProperty(
@@ -104,7 +109,7 @@ function createFeedbacks(inst) {
                 if (inst.data.nodes[event.options.engine][event.options.node] === undefined) return { text: '' }
                 if (inst.data.nodes[event.options.engine][event.options.node].properties === undefined) return { text: '' }
                 if (inst.data.nodes[event.options.engine][event.options.node].properties[event.options.property] === undefined) return { text: '' }
-                return { text: inst.data.nodes[event.options.engine][event.options.node].properties[event.options.property] }
+                return { text: `${inst.data.nodes[event.options.engine][event.options.node].properties[event.options.property]}` }
             }
         },
         basicCheckConstantDataValue: {
