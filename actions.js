@@ -293,6 +293,52 @@ function createActions(inst) {
                 })
             }
         },
+        basicEnableRender: {
+            name: 'Basic: Enable Render',
+            description: 'Set the current "EnableRender" state of specified node for selected engines',
+            options: [
+                engineSelection(inst),
+                {
+                    type: 'textinput',
+                    label: 'Node Name:',
+                    id: 'node',
+                    useVariables: true,
+                    required: true,
+                    tooltip: 'Enter name of node. Node names should match across all engines!'
+                },
+                {
+                    type: 'checkbox',
+                    label: 'EnableRender:',
+                    id: 'render',
+                    default: true,
+                    tooltip: 'Select state for "EnableRender" of specified node!',
+                },
+            ],
+            callback: async (event) => {
+                // return if required values empty
+                if ([event.options.node].includes('')) return false
+
+                // parse variables from text input
+                event.options.node = await inst.parseVariablesInString(event.options.node)
+
+                // loop over all selected engines
+                event.options.engines.forEach(async (engine) => {
+                    // create endpoint
+                    const endpoint = `engines/${engine}/nodes/${sString(event.options.node)}/properties/Actor%2F%2FEnableRender%2F0`
+
+                    // request new constant value
+                    try {
+                        const response = await inst.PATCH(endpoint, { Value:  event.options.render })
+                        if (Object.keys(response).length === 0) throw new Error('ResponseError')
+                        // deepSetProperty(inst.data.nodes, [engine, event.options.node, 'properties', response.PropertyPath], response.Value)
+                        // inst.checkFeedbacks('basicDisplayConstantDataValue', 'basicCheckConstantDataValue', 'nodesCheckPropertyValue')
+                    }
+                    catch(error) {
+                        inst.log('error', `Action execution failed! (action: ${event.actionId}, engine: ${engine})\n` + error)
+                    }
+                })
+            }
+        },
         basicSetMediaFilePath: {
             name: 'Basic: Set Media File Path',
             description: 'Set a path to a file on the RealityShare server',
