@@ -125,8 +125,11 @@ function createFeedbacks(inst) {
                     default: 'boolean',
                     choices: [
                         { id: 'boolean', label: 'ConstantBoolean' },
+                        { id: 'booleanVar', label: 'ConstantBoolean (variable)' },
                         { id: 'float', label: 'ConstantFloat' },
+                        { id: 'floatVar', label: 'ConstantFloat (variable)' },
                         { id: 'integer', label: 'ConstantInteger' },
+                        { id: 'integerVar', label: 'ConstantInteger (variable)' },
                         { id: 'string', label: 'ConstantString' },
                     ],
                     tooltip: 'Select data type you want to check',
@@ -146,6 +149,15 @@ function createFeedbacks(inst) {
                     isVisible: (options) => options.type === 'boolean'
                 },
                 {
+                    type: 'textinput',
+                    label: 'Boolean State (variable):',
+                    id: 'booleanVar',
+                    useVariables: true,
+                    default: '',
+                    tooltip: 'Enter variable for "Boolean" value of specified "ConstantBoolean" node',
+                    isVisible: (options) => options.type === 'booleanVar'
+                },
+                {
                     type: 'number',
                     label: 'Float Value:',
                     id: 'float',
@@ -156,6 +168,15 @@ function createFeedbacks(inst) {
                     isVisible: (options) => options.type === 'float'
                 },
                 {
+                    type: 'textinput',
+                    label: 'Float Value (variable):',
+                    id: 'floatVar',
+                    useVariables: true,
+                    default: '',
+                    tooltip: 'Enter variable for "Float" value of specified "ConstantFloat" node',
+                    isVisible: (options) => options.type === 'floatVar'
+                },
+                {
                     type: 'number',
                     label: 'Integer Value:',
                     id: 'integer',
@@ -164,6 +185,15 @@ function createFeedbacks(inst) {
                     step: 1,
                     tooltip: 'Enter the "Integer" value for the specified "ConstantInteger" node',
                     isVisible: (options) => options.type === 'integer'
+                },
+                {
+                    type: 'textinput',
+                    label: 'Integer Value (variable):',
+                    id: 'integerVar',
+                    useVariables: true,
+                    default: '',
+                    tooltip: 'Enter variable for "Integer" value of specified "ConstantInteger" node',
+                    isVisible: (options) => options.type === 'integerVar'
                 },
                 {
                     type: 'textinput',
@@ -189,16 +219,19 @@ function createFeedbacks(inst) {
 
                 switch(event.options.type) {
                     case 'boolean':
+                    case 'booleanVar':
                         event.options.property = 'Default//Boolean/0'
                         event.options.value = (event.options.value !== 'true') ? false : true
                         break
 
                     case 'float':
+                    case 'floatVar':
                         event.options.property = 'Default//Float/0'
                         event.options.value = parseFloat(event.options.value)
                         break
 
                     case 'integer':
+                    case 'integerVar':
                             event.options.property = 'Default//Integer/0'
                             event.options.value = parseInt(event.options.value)
                             break
