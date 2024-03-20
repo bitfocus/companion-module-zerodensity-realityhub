@@ -92,6 +92,52 @@ function createActions(inst) {
                 })
             }
         },
+        basicEnableRender: {
+            name: 'Basic: Enable Render',
+            description: 'Set the current "EnableRender" state of specified node for selected engines',
+            options: [
+                engineSelection(inst),
+                {
+                    type: 'textinput',
+                    label: 'Node Name:',
+                    id: 'node',
+                    useVariables: true,
+                    required: true,
+                    tooltip: 'Enter name of node. Node names should match across all engines!'
+                },
+                {
+                    type: 'checkbox',
+                    label: 'EnableRender:',
+                    id: 'render',
+                    default: true,
+                    tooltip: 'Select state for "EnableRender" of specified node!',
+                },
+            ],
+            callback: async (event) => {
+                // return if required values empty
+                if ([event.options.node].includes('')) return false
+
+                // parse variables from text input
+                event.options.node = await inst.parseVariablesInString(event.options.node)
+
+                // loop over all selected engines
+                event.options.engines.forEach(async (engine) => {
+                    // create endpoint
+                    const endpoint = `engines/${engine}/nodes/${sString(event.options.node)}/properties/Actor%2F%2FEnableRender%2F0`
+
+                    // request new constant value
+                    try {
+                        const response = await inst.PATCH(endpoint, { Value:  event.options.render })
+                        if (Object.keys(response).length === 0) throw new Error('ResponseError')
+                        // deepSetProperty(inst.data.nodes, [engine, event.options.node, 'properties', response.PropertyPath], response.Value)
+                        // inst.checkFeedbacks('basicDisplayConstantDataValue', 'basicCheckConstantDataValue', 'nodesCheckPropertyValue')
+                    }
+                    catch(error) {
+                        inst.log('error', `Action execution failed! (action: ${event.actionId}, engine: ${engine})\n` + error)
+                    }
+                })
+            }
+        },
         basicLoadFeatureData: {
             name: 'Basic: Load Feature Data',
             description: 'Load specific data from RealityHub server',
@@ -188,8 +234,11 @@ function createActions(inst) {
                     default: 'boolean',
                     choices: [
                         { id: 'boolean', label: 'ConstantBoolean' },
+                        { id: 'booleanVar', label: 'ConstantBoolean (variable)' },
                         { id: 'float', label: 'ConstantFloat' },
+                        { id: 'floatVar', label: 'ConstantFloat (variable)' },
                         { id: 'integer', label: 'ConstantInteger' },
+                        { id: 'integerVar', label: 'ConstantInteger (variable)' },
                         { id: 'string', label: 'ConstantString' },
                     ],
                     tooltip: 'Select data type you want to change',
@@ -210,6 +259,15 @@ function createActions(inst) {
                     isVisible: (options) => options.type === 'boolean'
                 },
                 {
+                    type: 'textinput',
+                    label: 'Boolean State (variable):',
+                    id: 'booleanVar',
+                    useVariables: true,
+                    default: '',
+                    tooltip: 'Enter variable for "Boolean" value of specified "ConstantBoolean" node',
+                    isVisible: (options) => options.type === 'booleanVar'
+                },
+                {
                     type: 'number',
                     label: 'Float Value:',
                     id: 'float',
@@ -220,6 +278,15 @@ function createActions(inst) {
                     isVisible: (options) => options.type === 'float'
                 },
                 {
+                    type: 'textinput',
+                    label: 'Float Value (variable):',
+                    id: 'floatVar',
+                    useVariables: true,
+                    default: '',
+                    tooltip: 'Enter variable for "Float" value of specified "ConstantFloat" node',
+                    isVisible: (options) => options.type === 'floatVar'
+                },
+                {
                     type: 'number',
                     label: 'Integer Value:',
                     id: 'integer',
@@ -228,6 +295,15 @@ function createActions(inst) {
                     step: 1,
                     tooltip: 'Enter the "Integer" value for the specified "ConstantInteger" node',
                     isVisible: (options) => options.type === 'integer'
+                },
+                {
+                    type: 'textinput',
+                    label: 'Integer Value (variable):',
+                    id: 'integerVar',
+                    useVariables: true,
+                    default: '',
+                    tooltip: 'Enter variable for "Integer" value of specified "ConstantInteger" node',
+                    isVisible: (options) => options.type === 'integerVar'
                 },
                 {
                     type: 'textinput',
@@ -249,16 +325,19 @@ function createActions(inst) {
 
                 switch(event.options.type) {
                     case 'boolean':
+                    case 'booleanVar':
                         event.options.property = 'Default%2F%2FBoolean%2F0'
                         event.options.value = (event.options.value !== 'true') ? false : true
                         break
 
                     case 'float':
+                    case 'floatVar':
                         event.options.property = 'Default%2F%2FFloat%2F0'
                         event.options.value = parseFloat(event.options.value)
                         break
 
                     case 'integer':
+                    case 'integerVar':
                             event.options.property = 'Default%2F%2FInteger%2F0'
                             event.options.value = parseInt(event.options.value)
                             break
@@ -286,52 +365,6 @@ function createActions(inst) {
                         if (Object.keys(response).length === 0) throw new Error('ResponseError')
                         deepSetProperty(inst.data.nodes, [engine, event.options.node, 'properties', response.PropertyPath], response.Value)
                         inst.checkFeedbacks('basicDisplayConstantDataValue', 'basicCheckConstantDataValue', 'nodesCheckPropertyValue')
-                    }
-                    catch(error) {
-                        inst.log('error', `Action execution failed! (action: ${event.actionId}, engine: ${engine})\n` + error)
-                    }
-                })
-            }
-        },
-        basicEnableRender: {
-            name: 'Basic: Enable Render',
-            description: 'Set the current "EnableRender" state of specified node for selected engines',
-            options: [
-                engineSelection(inst),
-                {
-                    type: 'textinput',
-                    label: 'Node Name:',
-                    id: 'node',
-                    useVariables: true,
-                    required: true,
-                    tooltip: 'Enter name of node. Node names should match across all engines!'
-                },
-                {
-                    type: 'checkbox',
-                    label: 'EnableRender:',
-                    id: 'render',
-                    default: true,
-                    tooltip: 'Select state for "EnableRender" of specified node!',
-                },
-            ],
-            callback: async (event) => {
-                // return if required values empty
-                if ([event.options.node].includes('')) return false
-
-                // parse variables from text input
-                event.options.node = await inst.parseVariablesInString(event.options.node)
-
-                // loop over all selected engines
-                event.options.engines.forEach(async (engine) => {
-                    // create endpoint
-                    const endpoint = `engines/${engine}/nodes/${sString(event.options.node)}/properties/Actor%2F%2FEnableRender%2F0`
-
-                    // request new constant value
-                    try {
-                        const response = await inst.PATCH(endpoint, { Value:  event.options.render })
-                        if (Object.keys(response).length === 0) throw new Error('ResponseError')
-                        // deepSetProperty(inst.data.nodes, [engine, event.options.node, 'properties', response.PropertyPath], response.Value)
-                        // inst.checkFeedbacks('basicDisplayConstantDataValue', 'basicCheckConstantDataValue', 'nodesCheckPropertyValue')
                     }
                     catch(error) {
                         inst.log('error', `Action execution failed! (action: ${event.actionId}, engine: ${engine})\n` + error)
