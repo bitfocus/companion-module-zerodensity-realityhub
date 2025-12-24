@@ -2,4 +2,3 @@
 /pkg
 /pkg.tgz
 *.yaml
-*.lock
