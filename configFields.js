@@ -7,10 +7,10 @@ import { Regex } from '@companion-module/base'
 export const createConfigFields = [
     {
         type: 'static-text',
-        id: 'info',
+        id: 'info-header',
         width: 12,
         label: 'Information',
-        value: 'This module will connect to a Zerodensity RealityHub 1.3 server',
+        value: 'This module will connect to a Zero Density RealityHub 2.0+ server. For RealityHub 2.1+, an API key is required for authentication.',
     },
     {
         type: 'textinput',
@@ -20,6 +20,14 @@ export const createConfigFields = [
         default: '',
         regex: Regex.IP,
         tooltip: 'Enter ip address of reality hub server'
+    },
+    {
+        type: 'textinput',
+        id: 'apiKey',
+        label: 'API Key (optional):',
+        width: 6,
+        default: '',
+        tooltip: 'Enter API key for RealityHub 2.1+. Leave empty if your RealityHub version does not require authentication.'
     },
     {
         type: 'multidropdown',
@@ -35,11 +43,11 @@ export const createConfigFields = [
     },
     {
         type: 'static-text',
-        id: 'info',
+        id: 'info-warning',
         width: 12,
         label: 'IMPORTANT:',
         value: 'Selecting the "Nodes" feature can increase startup time by a couple of minutes. Please wait!',
-        // isVisible: (options) => Array.isArray(options.features) && options.features.includes('nodes')
+        isVisible: (options) => Array.isArray(options.features) && options.features.includes('nodes')
     },
     {
         type: 'checkbox',

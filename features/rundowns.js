@@ -102,7 +102,7 @@ export const loadRundowns = async (inst) => {
         // loop over each rundown
         for (const rundown of rundownsData) {
             // sort out template pool from rundowns (this rundown should only appear in the "templates" feature)
-            if (rundown.name === inst.config.name) continue
+            if (rundown.name === inst.config.templatePool) continue
 
             // update "rundowns" object with current rundown
             rundowns[rundown.id] = {

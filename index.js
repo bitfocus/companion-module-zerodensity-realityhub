@@ -213,7 +213,11 @@ class RealityHubInstance extends InstanceBase {
 			this.updateStatus('LOAD: Templates data ...', '0%')
 			this.log('info', 'Load templates data...')
 			await this.pollTemplates(this) // request templates data
-			this.log('info', `${Object.keys(Object.values(this.data.templates)[0].items).length} templates found!`)
+			const templateValues = Object.values(this.data.templates)
+			const templateCount = templateValues.length > 0 && templateValues[0]?.items 
+				? Object.keys(templateValues[0].items).length 
+				: 0
+			this.log('info', `${templateCount} templates found!`)
 		}
 
 		// check if nodes feature is selected in config
@@ -326,7 +330,13 @@ class RealityHubInstance extends InstanceBase {
 		// create request parameters object
 		const parameters = {
 			responseType: 'json',
-			timeout: this.requestTimeout
+			timeout: this.requestTimeout,
+			headers: {}
+		}
+
+		// add API key header if configured (for RealityHub 2.1+)
+		if (this.config.apiKey && this.config.apiKey.trim() !== '') {
+			parameters.headers['X-API-Key'] = this.config.apiKey.trim()
 		}
 
 		// add body to "parameters" object if not empty
@@ -344,11 +354,26 @@ class RealityHubInstance extends InstanceBase {
 			// handle "PATCH" requests
 			else if (method === 'PATCH') response = await got.patch(url, parameters).json()
 
+			// handle "PUT" requests
+			else if (method === 'PUT') response = await got.put(url, parameters).json()
+
+			// handle "DELETE" requests
+			else if (method === 'DELETE') response = await got.delete(url, parameters).json()
+
 			this.requestErrors = 0
 		}
 		catch(error) {
 			this.requestErrors++
-			this.errorModule(error.name, error.options.url)
+			// Enhanced error handling for API key issues
+			if (error.response?.statusCode === 401) {
+				this.log('error', 'Authentication failed! Please check your API key.')
+				this.errorModule('Unauthorized', error.options?.url || url)
+			} else if (error.response?.statusCode === 403) {
+				this.log('error', 'Access forbidden! API key may be invalid or expired.')
+				this.errorModule('Forbidden', error.options?.url || url)
+			} else {
+				this.errorModule(error.name, error.options?.url || url)
+			}
 		}
 		finally {
 			// log request debug message if enabled
@@ -365,6 +390,8 @@ class RealityHubInstance extends InstanceBase {
 	GET = async (endpoint, body={}, importance='high') => this.REQ('GET', `http://${this.config.host}/api/rest/v1/${endpoint}`, body, importance)
 	POST = async (endpoint, body={}, importance='high') => this.REQ('POST', `http://${this.config.host}/api/rest/v1/${endpoint}`, body, importance)
 	PATCH = async (endpoint, body={}, importance='high') => this.REQ('PATCH', `http://${this.config.host}/api/rest/v1/${endpoint}`, body, importance)
+	PUT = async (endpoint, body={}, importance='high') => this.REQ('PUT', `http://${this.config.host}/api/rest/v1/${endpoint}`, body, importance)
+	DELETE = async (endpoint, body={}, importance='high') => this.REQ('DELETE', `http://${this.config.host}/api/rest/v1/${endpoint}`, body, importance)
 }
 
 runEntrypoint(RealityHubInstance, upgradeScripts)

@@ -1,6 +1,6 @@
-## Zerodensity RealityHub 1.3
+## Zerodensity RealityHub 2.0+
 
-This module will allow you to control Zerodensity RealityHub 1.3.
+This module will allow you to control Zerodensity RealityHub 2.0+
 
 IMPORTANT: For this module to work, the "REST API" server feature needs to be available (Configuration > License > License & Features > Server Features > REST API)
 
