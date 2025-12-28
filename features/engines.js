@@ -87,6 +87,29 @@ export const loadEngines = async (inst) => {
             if (!Object.keys(inst.data.engines).includes(engine.id)) setDefinitions = true
         }
 
+        // Fetch Lino-specific engines (different from Reality Engines!)
+        // Lino has its own engine system for rundown control
+        const linoEnginesData = await inst.GET('lino/engines', {}, 'medium')
+        if (linoEnginesData !== null && Array.isArray(linoEnginesData) && linoEnginesData.length > 0) {
+            inst.data.linoEngines = {}
+            for (const linoEngine of linoEnginesData) {
+                inst.data.linoEngines[linoEngine.id] = {
+                    name: linoEngine.name,
+                    started: linoEngine.started,
+                    mode: linoEngine.mode,
+                    loadedRundowns: linoEngine.loadedRundownsInfo || []
+                }
+            }
+            // Set primary Lino engine ID (prefer started engines)
+            const startedLinoEngine = linoEnginesData.find(e => e.started === true)
+            inst.data.linoEngineId = startedLinoEngine ? startedLinoEngine.id : linoEnginesData[0].id
+            inst.log('debug', `Found ${linoEnginesData.length} Lino engines. Selected Lino Engine ID: ${inst.data.linoEngineId}`)
+        } else {
+            inst.data.linoEngines = {}
+            inst.data.linoEngineId = null
+            inst.log('warn', 'No Lino engines found for rundown operations')
+        }
+
         // save elapsed time
         inst.data.module.updateEnginesDuration = Date.now()-start
 

@@ -64,6 +64,14 @@ export const templateButtonOptions = (templates) => {
 // load data related to templates
 export const loadTemplates = async (inst) => {
 
+    // check if legacy template pool sync is enabled
+    // Skip if templatePool is empty, "*", or not defined
+    if (!inst.config.templatePool || inst.config.templatePool.trim() === '' || inst.config.templatePool.trim() === '*') {
+        inst.data.module.updateTemplatesData = false
+        inst.data.templates = {}
+        return
+    }
+
     // indicate avtive templates loading
     inst.data.module.updateTemplatesData = true
 
@@ -88,8 +96,15 @@ export const loadTemplates = async (inst) => {
     // set "templatesAdded" to "false" to track if no templates are added later
     let templatesAdded = false
 
+    // Check if we have Lino engines
+    if (!inst.data.linoEngines || Object.keys(inst.data.linoEngines).length === 0) {
+        inst.log('warn', 'Skipping templates update: No Lino engines available')
+        inst.data.module.updateTemplatesData = false
+        return
+    }
+
     // request templates data with 'medium' priority
-    const templatesData = await inst.GET('playout/templates', {}, 'medium')
+    const templatesData = await inst.GET('lino/templates', {}, 'medium')
 
     // check if templates request was successfull and response has at least 1 template
     if (templatesData !== null && Array.isArray(templatesData) && templatesData.length > 0) {
@@ -97,18 +112,23 @@ export const loadTemplates = async (inst) => {
         // set total steps for real time progress
         totalSteps = templatesData.length + 2
 
-        // request rundowns data with 'medium' priority
-        const rundownsData = await inst.GET('playout/rundowns', {}, 'medium')
-            
-        // check if request was successfull
-        if (rundownsData !== null && Array.isArray(rundownsData)) {
-            // loop over all rundowns
-            for (const rundown of rundownsData) {
-                // update templatePool object if templatePool found in rundowns
-                if (rundown.name === inst.config.templatePool) templatePool = rundown
+        // Search for template pool rundown across all Lino engines
+        let foundLinoEngineId = null
+        const linoEngineIds = Object.keys(inst.data.linoEngines)
+        
+        for (const linoEngineId of linoEngineIds) {
+            const rundownsData = await inst.GET(`lino/rundowns/${linoEngineId}`, {}, 'medium')
+            if (rundownsData !== null && Array.isArray(rundownsData)) {
+                for (const rundown of rundownsData) {
+                    if (rundown.name === inst.config.templatePool) {
+                        templatePool = rundown
+                        foundLinoEngineId = linoEngineId
+                        break
+                    }
+                }
             }
+            if (foundLinoEngineId) break
         }
-        else templates = {}
 
         // increase current step
         currentStep++
@@ -119,21 +139,19 @@ export const loadTemplates = async (inst) => {
         if (!inst.moduleInitiated) inst.updateStatus('LOAD: Templates data ...', inst.data.module.updateTemplatesProgress + '%')
 
         // when no templatePool found in rundowns
-        if (templatePool.id === undefined) {
-            // create new empty rundown
-            const newRundown = await inst.POST('playout/rundowns', { name: inst.config.templatePool }, 'medium')
-
-            // update templatePool object with new rundown if request was successfull
-            if (newRundown !== null && newRundown.id !== undefined && newRundown.name !== undefined) {
-                templatePool = newRundown
-                inst.log('debug', `New rundown "${newRundown.name}" created as templatePool!`)
-            }
+        if (templatePool.id === undefined || !foundLinoEngineId) {
+            // Lino API typically doesn't support creating rundowns via REST easily or logic is different.
+            // We'll skip auto-creation to avoid errors, or user must create it manually.
+            inst.log('info', `Rundown "${inst.config.templatePool}" not found. Skipping Template Pool sync.`)
         }
 
         // when templatePool found in rundowns
         else {
-            // request items of templatePool rundown
-            const templatePoolItemsData = await inst.GET(`playout/rundowns/${templatePool.id}/items`, {}, 'medium')
+            // Store the Lino engine ID with template pool info
+            templatePool.linoEngineId = foundLinoEngineId
+            
+            // request items of templatePool rundown using correct Lino engine ID
+            const templatePoolItemsData = await inst.GET(`lino/rundown/${foundLinoEngineId}/${templatePool.id}/items/`, {}, 'medium')
 
             // check if request was successfull
             if (templatePoolItemsData !== null && Array.isArray(templatePoolItemsData)) {
@@ -144,26 +162,30 @@ export const loadTemplates = async (inst) => {
                 // update "templates" object with current templatePool rundown
                 templates[templatePool.id] = {
                     name: templatePool.name,
+                    linoEngineId: foundLinoEngineId,
                     items: {}
                 }
 
                 // loop over all items
                 for (const item of templatePoolItemsData) {
 
-                    // update item
-                    const itemUpdate = await inst.PATCH(`playout/rundowns/${templatePool.id}/items/${item.id}`, {}, 'medium')
-
-                    if (itemUpdate === null || itemUpdate.id === undefined || itemUpdate.name === undefined) break
+                    // update item - Lino might not need PATCH update to refresh data if GET returns it
+                    // skipping PATCH for now as it was likely a trigger to refresh legacy data
                     
                     // update "templates" object with item properties
-                    templates[templatePool.id].items[item.id] = {
+                    const itemId = item.id
+                    templates[templatePool.id].items[itemId] = {
                         name: item.name,
                         template: item.template,
                         buttons: {}
                     }
 
                     // update button labels
-                    for (const button of item.buttons) templates[templatePool.id].items[item.id].buttons[button.id] = button.label
+                    if (item.buttons) {
+                        for (const [key, label] of Object.entries(item.buttons)) {
+                            templates[templatePool.id].items[itemId].buttons[key] = label || key
+                        }
+                    }
 
                     // increase current step
                     currentStep++
@@ -200,12 +222,13 @@ export const loadTemplates = async (inst) => {
             }
 
             // if "addTemplate" is "true" (template not in templatePool)
-            if (addTemplate === true) {
+            if (addTemplate === true && templatePool.id !== undefined && foundLinoEngineId) {
                 // set "templatesAdded" to "true" to track that templates have been added
                 templatesAdded = true
 
                 // add template as new item to templatePool rundown
-                const response = await inst.POST(`playout/rundowns/${templatePool.id}/items`, { template: template.name, name: template.name }, 'medium')
+                // Lino: POST /api/rest/v1/lino/rundown/{engineId}/{rundownId}/items/
+                const response = await inst.POST(`lino/rundown/${foundLinoEngineId}/${templatePool.id}/items/`, { template: template.name, name: template.name }, 'medium')
                 if (response !== null && response.name !== undefined) {
                     inst.log('debug', `Template "${response.name}" was added to templatePool!`)
                 }
@@ -224,29 +247,35 @@ export const loadTemplates = async (inst) => {
         }
 
         // in case templates where added to templatesPool
-        if (templatesAdded) {
+        if (templatesAdded && templatePool.id !== undefined && foundLinoEngineId) {
             templates = {}
             
-            // request templatesPool
-            const poolData = await inst.GET(`playout/rundowns/${templatePool.id}/items`, {}, 'medium')
+            // request templatesPool using correct Lino engine ID
+            const poolData = await inst.GET(`lino/rundown/${foundLinoEngineId}/${templatePool.id}/items/`, {}, 'medium')
             if (poolData !== null && Array.isArray(poolData)) {
                 // update "templates" object with current templatePool rundown
                 templates[templatePool.id] = {
                     name: templatePool.name,
+                    linoEngineId: foundLinoEngineId,
                     items: {}
                 }
 
                 // loop over all items
                 for (const pool of poolData) {
+                    const poolId = pool.id
                     // update "templates" object with item properties
-                    templates[templatePool.id].items[pool.id] = {
+                    templates[templatePool.id].items[poolId] = {
                         name: pool.name,
                         template: pool.template,
                         buttons: {}
                     }
 
                     // update button labels
-                    for (const button of pool.buttons) { templates[templatePool.id].items[pool.id].buttons[button.id] = button.label }
+                    if (pool.buttons) {
+                        for (const [key, label] of Object.entries(pool.buttons)) {
+                            templates[templatePool.id].items[poolId].buttons[key] = label || key
+                        }
+                    }
                 }
             }
             else { templates = {} }

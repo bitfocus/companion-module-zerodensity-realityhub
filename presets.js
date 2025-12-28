@@ -255,6 +255,70 @@ export const getPresets = (inst) => {
         })
     }
 
+    // append rundown presets
+    if (inst.data.rundowns && Object.keys(inst.data.rundowns).length > 0) {
+        let rundownPresetsCount = 0
+        // loop over all rundowns
+        for (const [rID, rundown] of Object.entries(inst.data.rundowns)) {
+            // loop over all items in rundown
+            if (rundown.items) {
+                for (const [iID, itemData] of Object.entries(rundown.items)) {
+                    // loop over all buttons in item
+                    if (itemData.buttons && Object.keys(itemData.buttons).length > 0) {
+                        for (const [buttonKey, buttonLabel] of Object.entries(itemData.buttons)) {
+                            // if button is valid add preset
+                            if (buttonLabel !== undefined) {
+                                presets.push({
+                                    category: 'Rundown: ' + rundown.name,
+                                    name: `Rundown ${rundown.name} - Item ${itemData.name} - ${buttonLabel}`,
+                                    type: 'button',
+                                    style: {
+                                        text: buttonLabel,
+                                        size: '18',
+                                        color: combineRgb(255, 255, 255),
+                                        bgcolor: combineRgb(0, 102, 0)
+                                    },
+                                    steps: [
+                                        {
+                                            down: [
+                                                {
+                                                    actionId: 'rundownButtonPress',
+                                                    options: {
+                                                        rundown: `r${rID}`,
+                                                        [`r${rID}`]: `r${rID}_i${iID}`,
+                                                        [`r${rID}_i${iID}`]: `r${rID}_i${iID}_b${buttonKey}`
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    ],
+                                    feedbacks: [
+                                        {
+                                            feedbackId: 'rundownButtonLabel',
+                                            options: {
+                                                rundown: `r${rID}`,
+                                                [`r${rID}`]: `r${rID}_i${iID}`,
+                                                [`r${rID}_i${iID}`]: `r${rID}_i${iID}_b${buttonKey}`
+                                            },
+                                            style: {
+                                                color: combineRgb(255, 255, 255),
+                                                bgcolor: combineRgb(0, 51, 0)
+                                            }
+                                        }
+                                    ]
+                                })
+                                rundownPresetsCount++
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        inst.log('debug', `Generated ${rundownPresetsCount} rundown presets`)
+    } else {
+        inst.log('debug', 'No rundown data available for presets')
+    }
+
     // append template presets
     if (Object.keys(inst.data.templates).length > 0) {
         const rID = Object.keys(inst.data.templates)[0]

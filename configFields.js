@@ -154,9 +154,9 @@ export const createConfigFields = [
         type: 'textinput',
         id: 'templatePool',
         label: 'Rundown-Name For Templates:',
-        width: 6,
+        width: 12,
         default: 'CompanionTemplatesPool',
-        tooltip: 'Enter a name for the rundown, where templates are stored to press buttons from',
+        tooltip: 'Enter a rundown name to sync RealityHub templates to it (legacy mode). Leave empty or use "*" to disable template sync and only use the Rundowns feature.',
         isVisible: (options) => Array.isArray(options.features) && options.features.includes('templates')
     },
     {

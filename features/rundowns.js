@@ -2,6 +2,7 @@
 
 import { getActions } from '../actions.js'
 import { getFeedbacks } from '../feedbacks.js'
+import { getPresets } from '../presets.js'
 import { keyValueLogic, ms2S, isEqual } from '../tools.js'
 
 
@@ -91,62 +92,81 @@ export const loadRundowns = async (inst) => {
     let totalSteps = 0
     let currentStep = 0
     
-    // request rundowns data with 'medium' priority
-    const rundownsData = await inst.GET('playout/rundowns', {}, 'medium')
-
-    // check if request was successfull
-    if (rundownsData !== null && Array.isArray(rundownsData)) {
-        // set total step count for polling all rundowns
-        if (totalSteps === 0) totalSteps = rundownsData.length
-
-        // loop over each rundown
-        for (const rundown of rundownsData) {
-            // sort out template pool from rundowns (this rundown should only appear in the "templates" feature)
-            if (rundown.name === inst.config.templatePool) continue
-
-            // update "rundowns" object with current rundown
-            rundowns[rundown.id] = {
-                name: rundown.name,
-                items: {}
-            }
-
-            // request items data of single rundown with 'medium' priority
-            const itemsData = await inst.GET(`playout/rundowns/${rundown.id}/items`, {}, 'medium') 
-
-            // loop over each item if request was successfull and response is an array
-            if (itemsData !== null && Array.isArray(itemsData)) {
-                for (const item of itemsData) {
-                    // update "rundowns" object with item properties
-                    rundowns[rundown.id].items[item.id] = {
-                        name: item.name,
-                        buttons: {}
-                    }
-
-                    // update button labels
-                    for (const button of item.buttons) rundowns[rundown.id].items[item.id].buttons[button.id] = button.label
-                }
-            }
-            else {
-                rundowns = {}
-                break
-            }
-
-            if (Object.keys(rundowns).length === 0) break
-
-            // increasing current step
-            currentStep++
-
-            // update progress if current step is lower or equal to total steps
-            if (currentStep < totalSteps) {
-                inst.data.module.updateRundownsProgress = Math.floor(100*currentStep/totalSteps)
-                inst.updateVariables({ updateRundownsProgress: inst.data.module.updateRundownsProgress + '%' })
-                if (!inst.moduleInitiated) inst.updateStatus('LOAD: Rundowns data ...', inst.data.module.updateRundownsProgress + '%')
-            }
-        }
+    // Check if we have Lino engines
+    if (!inst.data.linoEngines || Object.keys(inst.data.linoEngines).length === 0) {
+        inst.log('warn', 'Skipping rundown update: No Lino engines available')
+        inst.data.module.updateRundownsData = false
+        return
     }
 
-    // when rundowns request fails
-    else { rundowns = {} }
+    // Get all Lino engine IDs
+    const linoEngineIds = Object.keys(inst.data.linoEngines)
+    totalSteps = linoEngineIds.length
+
+    // Iterate through each Lino engine to get its rundowns
+    for (const linoEngineId of linoEngineIds) {
+        // Request rundowns for this specific Lino engine
+        const rundownsData = await inst.GET(`lino/rundowns/${linoEngineId}`, {}, 'medium')
+
+        // Check if request was successful
+        if (rundownsData !== null && Array.isArray(rundownsData)) {
+            // Update total steps to include rundowns
+            totalSteps += rundownsData.length
+
+            // Loop over each rundown for this engine
+            for (const rundown of rundownsData) {
+                // Use composite key to handle same rundown ID on different engines
+                const rundownKey = rundown.id
+                
+                // Update "rundowns" object with current rundown
+                rundowns[rundownKey] = {
+                    name: rundown.name,
+                    linoEngineId: linoEngineId, // Store which Lino engine owns this rundown
+                    items: {}
+                }
+
+                // Request items data using the correct Lino engine ID
+                const itemsData = await inst.GET(`lino/rundown/${linoEngineId}/${rundown.id}/items/`, {}, 'medium') 
+
+                // Loop over each item if request was successful
+                if (itemsData !== null && Array.isArray(itemsData)) {
+                    for (const item of itemsData) {
+                        const itemId = item.id
+                        
+                        rundowns[rundownKey].items[itemId] = {
+                            name: item.name,
+                            buttons: {}
+                        }
+
+                        // Update button labels
+                        if (item.buttons) {
+                            for (const [key, label] of Object.entries(item.buttons)) {
+                                rundowns[rundownKey].items[itemId].buttons[key] = label || key
+                            }
+                        }
+                    }
+                }
+                else {
+                    inst.log('debug', `No items found for rundown "${rundown.name}" (ID: ${rundown.id}) on Lino engine ${linoEngineId}`)
+                }
+
+                // Update progress
+                currentStep++
+                if (currentStep < totalSteps) {
+                    inst.data.module.updateRundownsProgress = Math.floor(100*currentStep/totalSteps)
+                    inst.updateVariables({ updateRundownsProgress: inst.data.module.updateRundownsProgress + '%' })
+                    if (!inst.moduleInitiated) inst.updateStatus('LOAD: Rundowns data ...', inst.data.module.updateRundownsProgress + '%')
+                }
+            }
+        }
+
+        // Update progress for engine
+        currentStep++
+        if (currentStep < totalSteps) {
+            inst.data.module.updateRundownsProgress = Math.floor(100*currentStep/totalSteps)
+            inst.updateVariables({ updateRundownsProgress: inst.data.module.updateRundownsProgress + '%' })
+        }
+    }
 
     if (inst.enableRequests === false) {
         inst.data.module.updateRundownsData = false
@@ -156,8 +176,10 @@ export const loadRundowns = async (inst) => {
     // only update rundowns if requested data is diffrent from previous rundown data
     if (!isEqual(inst.data.rundowns, rundowns)) {
         inst.data.rundowns = rundowns
+        inst.log('info', `Updating definitions with ${Object.keys(rundowns).length} rundowns`)
         inst.setActionDefinitions(getActions(inst))
         inst.setFeedbackDefinitions(getFeedbacks(inst))
+        inst.setPresetDefinitions(getPresets(inst))
         inst.checkFeedbacks('rundownButtonLabel')
     }
     

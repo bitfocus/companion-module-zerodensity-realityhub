@@ -711,8 +711,21 @@ function createActions(inst) {
             description: 'Trigger any button from selected rundowns',
             options: rundownButtonOptions(inst.data.rundowns),
             callback: async (event) => {
-                const [rID, iID, bID] = event.options[event.options[event.options.rundown]].split('_')
-                inst.POST(`playout/rundowns/${rID.substring(1)}/items/${iID.substring(1)}/${sString(bID.substring(1))}`)
+                const parts = event.options[event.options[event.options.rundown]].split('_')
+                const rID = parts[0]
+                const iID = parts[1]
+                const bID = parts.slice(2).join('_')
+                
+                // Get the Lino engine ID associated with this rundown
+                const rundownId = rID.substring(1)
+                const rundown = inst.data.rundowns[rundownId]
+                if (!rundown || !rundown.linoEngineId) {
+                    inst.log('error', `Cannot trigger button: No Lino engine ID for rundown ${rundownId}`)
+                    return
+                }
+                
+                // Lino API: POST /api/rest/v1/lino/rundown/{engineId}/{rundownId}/items/{itemId}/buttons/{buttonKey}
+                inst.POST(`lino/rundown/${rundown.linoEngineId}/${rundownId}/items/${iID.substring(1)}/buttons/${sString(bID.substring(1))}`)
             }
         }
     }
@@ -725,8 +738,21 @@ function createActions(inst) {
             description: 'Trigger any button from selected template',
             options: templateButtonOptions(inst.data.templates),
             callback: async (event) => {
-                const [rID, iID, bID] = event.options[event.options.template].split('_')
-                inst.POST(`playout/rundowns/${rID.substring(1)}/items/${iID.substring(1)}/${sString(bID.substring(1))}`)
+                const parts = event.options[event.options.template].split('_')
+                const rID = parts[0]
+                const iID = parts[1]
+                const bID = parts.slice(2).join('_')
+                
+                // Get the Lino engine ID associated with this template's rundown
+                const rundownId = rID.substring(1)
+                const template = inst.data.templates[rundownId]
+                const linoEngineId = template?.linoEngineId || inst.data.linoEngineId
+                if (!linoEngineId) {
+                    inst.log('error', `Cannot trigger button: No Lino engine ID for template rundown ${rundownId}`)
+                    return
+                }
+                
+                inst.POST(`lino/rundown/${linoEngineId}/${rundownId}/items/${iID.substring(1)}/buttons/${sString(bID.substring(1))}`)
             }
         }
     }
