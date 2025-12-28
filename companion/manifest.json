@@ -2,8 +2,8 @@
 	"id": "realityhub",
 	"name": "Zero Density: RealityHub",
 	"shortname": "RealityHub",
-	"description": "Control Zero Density RealityHub 2.0+ for virtual production and broadcast graphics",
-	"version": "2.0.0",
+	"description": "Control Zero Density RealityHub 2.1 for virtual production and broadcast graphics",
+	"version": "2.1.0",
 	"license": "MIT",
 	"repository": "https://github.com/bitfocus/companion-module-zerodensity-realityhub",
 	"bugs": "https://github.com/bitfocus/companion-module-zerodensity-realityhub/issues",
@@ -15,14 +15,13 @@
 	],
 	"legacyIds": [],
 	"runtime": {
-		"type": "node18",
+		"type": "node22",
 		"api": "nodejs-ipc",
 		"apiVersion": "0.0.0",
 		"entrypoint": "../index.js"
 	},
 	"manufacturer": "Zero Density",
 	"products": [
-		"RealityHub 2.0",
 		"RealityHub 2.1"
 	],
 	"keywords": [

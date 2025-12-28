@@ -1,16 +1,31 @@
-## Zerodensity RealityHub 2.0+
+## Zero Density RealityHub 2.1
 
-This module will allow you to control Zerodensity RealityHub 2.0+
+This module allows you to control Zero Density RealityHub 2.1.
 
-IMPORTANT: For this module to work, the "REST API" server feature needs to be available (Configuration > License > License & Features > Server Features > REST API)
+**Requirements:**
+* The "REST API" server feature must be licensed and enabled (Configuration > License > Server Features > REST API)
+* A REST API key is required for authentication
+* Companion must be on the same network as the RealityHub server
 
-In addition please make sure to expose Companion to the same network as the RealityHub server.
+### Creating a REST API Key in RealityHub
 
-### Configuration
-* Enter the IP address of the RealityHub server.
-* Select additional features this module should provide.
-* Decide wether additional features should update its data automatically.
-* When the "Templates" feature is selected, a rundown-name to store all templates in, must be provided.
+1. Navigate to **User Management** in RealityHub
+2. Your user account must have **REST API Management** right enabled to access the REST API Keys section
+3. In the left sidebar under **Management Objects**, expand **REST API Keys**
+4. Click the **+** button to create a new API key
+5. Give your API key a name (e.g., "Companion")
+6. In the **Acquired Modules** section, enable the modules this API key should have access to:
+   * **Lino** - Required for rundown control
+   * **Launcher** - Required for engine management
+   * **Nodegraph Editor** - Required for node property control
+7. Click **Copy to Clipboard** to copy the API key
+
+### Module Configuration
+* Enter the IP address of your RealityHub server
+* Enter your REST API key (required for authentication)
+* Select additional features this module should provide
+* Decide whether additional features should update their data automatically
+* When the "Templates" feature is selected, a rundown name to store all templates in must be provided
 
 
 **Available Actions:**

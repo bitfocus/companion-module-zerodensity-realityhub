@@ -10,7 +10,7 @@ export const createConfigFields = [
         id: 'info-header',
         width: 12,
         label: 'Information',
-        value: 'This module will connect to a Zero Density RealityHub 2.0+ server. For RealityHub 2.1+, an API key is required for authentication.',
+        value: 'This module connects to Zero Density RealityHub 2.1. An API key is required for authentication.',
     },
     {
         type: 'textinput',
@@ -19,15 +19,15 @@ export const createConfigFields = [
         width: 6,
         default: '',
         regex: Regex.IP,
-        tooltip: 'Enter ip address of reality hub server'
+        tooltip: 'Enter the IP address of your RealityHub 2.1 server'
     },
     {
         type: 'textinput',
         id: 'apiKey',
-        label: 'API Key (optional):',
+        label: 'API Key:',
         width: 6,
         default: '',
-        tooltip: 'Enter API key for RealityHub 2.1+. Leave empty if your RealityHub version does not require authentication.'
+        tooltip: 'Enter your RealityHub API key (required for authentication)'
     },
     {
         type: 'multidropdown',
