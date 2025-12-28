@@ -1,5 +1,64 @@
 # RealityHub Companion Module - Development Logbook
 
+## 2025-12-28: Module Packaging for Offline Distribution
+
+### Problem
+`yarn pack` creates a `.tgz` archive with a `package/` root folder, but Bitfocus Companion expects `companion/manifest.json` at the root (or `pkg/` root when using official tools). The "Import module package" feature fails to find the manifest in standard `yarn pack` archives.
+
+### Solution
+Use the official Bitfocus Companion build tool (`@companion-module/tools`) which is now configured as the build script.
+
+### How to Build for Distribution
+1. Run `yarn build` in the module root.
+2. The command executes `companion-module-build`.
+3. It generates a properly structured `realityhub-[version].tgz`.
+4. This file can be imported directly via the "Import module package" button in Companion.
+
+### Configuration Changes
+- Added `"build": "companion-module-build"` script to `package.json`.
+- This ensures consistent, compliant packaging for future releases.
+
+---
+
+## 2025-12-28: Version 2.1.0 - Node 22 & RealityHub 2.1 Only
+
+### Breaking Changes
+- **Dropped RealityHub 2.0 support** - Module now requires RealityHub 2.1 only
+- **API key is now required** - No longer optional for authentication
+
+### Package Manager
+- Switched from npm to **yarn** to align with Bitfocus Companion standards
+- Removed `package-lock.json`, using `yarn.lock` exclusively
+
+### Dependency Updates
+| Package | Old Version | New Version |
+|---------|-------------|-------------|
+| @companion-module/base | ~1.10.0 | ~1.14.1 |
+| @companion-module/tools | ^1.5.0 | ^2.5.0 |
+
+These updates add **Node 22 support** (engine requirement: `^18.12 || ^22.8`).
+
+### Runtime Update
+- Updated `manifest.json` runtime type from `node18` to `node22`
+- Aligns with Bitfocus Companion's primary runtime environment
+
+### Documentation Updates
+- **configFields.js**: Updated info text and API key field (now required, not optional)
+- **HELP.md**: Added detailed REST API key setup instructions:
+  - User requires "REST API Management" right in RealityHub
+  - Steps to create API key in User Management > REST API Keys
+  - Explanation of Acquired Modules (Lino, Launcher, Nodegraph Editor)
+
+### Files Changed
+- `package.json` - Version bump to 2.1.0, dependency updates
+- `yarn.lock` - Regenerated with new dependencies
+- `package-lock.json` - Deleted (switched to yarn)
+- `companion/manifest.json` - Runtime type node22
+- `configFields.js` - RealityHub 2.1 only, API key required
+- `companion/HELP.md` - REST API key setup instructions
+
+---
+
 ## 2025-12-28: Critical Bug Fix - Lino Engine ID vs Reality Engine ID
 
 ### Problem
@@ -144,4 +203,3 @@ Created dynamic presets from rundown item buttons:
 The "Rundown-Name For Templates" config field now supports:
 - Specific rundown name (e.g., "CompanionTemplatesPool") for legacy behavior
 - Empty or "*" to disable template pool sync and only use the new Rundowns feature
-

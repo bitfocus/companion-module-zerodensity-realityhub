@@ -2,3 +2,5 @@
 /pkg
 /pkg.tgz
 *.yaml
+yarn.lock
+*.tgz
