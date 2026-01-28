@@ -42,9 +42,13 @@ function createActions(inst) {
                         // trigger of "DoTransition"
                         const response = await inst.POST(endpoint)
 
-                        if (response.success === true) {
+                        if (response?.success === true) {
                             // request property data of selected node to update feedbacks
                             let properties = await inst.GET(`engines/${engine}/nodes/${sString(event.options.node)}/properties`)
+
+                            if (!Array.isArray(properties)) {
+                                properties = []
+                            }
                             
                             // loop over all properties in response to find transision duration
                             for (const property of properties) {
@@ -52,11 +56,11 @@ function createActions(inst) {
                                     // set timeout for duration of transition (+3% extra time)
                                     setTimeout(async () => {
                                         // request properties of selected node to update feedbacks
-                                        properties = await inst.GET(
-                                            `engines/${engine}/nodes/${sString(event.options.node)}/properties`,
-                                            {},
-                                            'medium'
-                                        )
+                                        properties = await inst.GET(`engines/${engine}/nodes/${sString(event.options.node)}/properties`, {}, 'medium')
+
+                                        if (!Array.isArray(properties)) {
+                                            properties = []
+                                        }
                                         
                                         // loop over all properties in response to find feedback relevant data
                                         for (const property of properties) {
@@ -733,5 +737,6 @@ function createActions(inst) {
 
     return actions
 }
+
 
 export const getActions = createActions
