@@ -1,5 +1,5 @@
 // tools
-
+import got from 'got'
 
 
 export const featureLogic = (options, data) => {
@@ -127,7 +127,7 @@ export const basicFeedback = (inst, event, data) => {
             inst.data.module.feedbackRequestActive[`/e:${engine}/n:${event.options.node}`] = true
             inst.log('debug', `FeedbackRequestActive: "/e:${engine}/n:${event.options.node}"`)
             inst.GET(`engines/${engine}/nodes/${sString(event.options.node)}/properties`, {}, 'medium').then((response) => {
-                for (const property of response) {
+                for (const property of (Array.isArray(response) ? response : [])) {
                     if (data.requestProperties.includes(property.PropertyPath)) {
                         deepSetProperty(
                             inst.data.nodes,
@@ -289,5 +289,25 @@ export class variableExecutor {
 
     async append(variable, value) {
         this.cue.push([variable, value])
+    }
+}
+
+
+export class requestCue {
+    constructor() {
+        this.cueHigh = []
+        this.cueNormal = []
+    }
+
+    async sendRequest({ method, url, parameters }) {
+        return await got[method](url, parameters)
+    }
+
+    addRequestToCue(method, url, parameters) {
+        
+    }
+
+    async GET(url, params={}) {
+
     }
 }
