@@ -500,8 +500,13 @@ function createActions(inst) {
                     try {
                         const response = await inst.PATCH(endpoint, { Value: event.options.name })
 
-                        if (Object.keys(response).length === 0) throw new Error('ResponseError')
-                        deepSetProperty(inst.data.nodes, [engine, event.options.node, 'properties', response.PropertyPath], response.Value)
+                        if (response == null || Array.isArray(response) || typeof response != 'object' || !response?.PropertyPath || !response?.Value) {
+                            inst.log('error', `Unexpected response! (action: ${event.actionId}, engine: ${engine})\n, request: ${endpoint}, response: ${response}`)
+                        }
+                        else {
+                            deepSetProperty(inst.data.nodes, [engine, event.options.node, 'properties', response.PropertyPath], response.Value)
+                        }
+
                         inst.checkFeedbacks('basicMixerChannel', 'nodesCheckPropertyValue')
                     }
                     catch(error) {
@@ -740,3 +745,4 @@ function createActions(inst) {
 
 
 export const getActions = createActions
+
