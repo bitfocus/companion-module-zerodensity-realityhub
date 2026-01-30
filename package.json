@@ -17,6 +17,6 @@
 		"npm": "^10.8.1"
 	},
 	"devDependencies": {
-		"@companion-module/tools": "^1.4.2"
+		"@companion-module/tools": "^1.5.2"
 	}
 }
